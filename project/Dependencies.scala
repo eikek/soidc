@@ -10,13 +10,19 @@ object Dependencies {
     val munit = "1.0.0"
     val munitCatsEffect = "2.0.0"
     val scribe = "3.15.0"
+    val scodecBits = "1.2.1"
     val jwtScala = "10.0.1";
   }
+
+  val scodecBits = Seq(
+    "org.scodec" %% "scodec-bits" % V.scodecBits
+  )
 
   val borer = Seq(
     "io.bullet" %% "borer-core" % V.borer,
     "io.bullet" %% "borer-derivation" % V.borer,
-    "io.bullet" %% "borer-compat-cats" % V.borer
+    "io.bullet" %% "borer-compat-cats" % V.borer,
+    "io.bullet" %% "borer-compat-scodec" % V.borer
   )
 
   val jwtScala = Seq(

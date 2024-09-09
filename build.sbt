@@ -19,7 +19,7 @@ val sharedSettings = Seq(
       "-encoding",
       "UTF-8",
       "-language:higherKinds",
-      "-Ykind-projector:underscores",
+      "-Xkind-projector:underscores",
       "-Werror",
       "-indent",
       "-print-lines",
@@ -86,7 +86,7 @@ val core = project
     name := "soidc-core",
     description := "Core module",
     libraryDependencies ++=
-      Dependencies.jwtScala
+      Dependencies.jwtScala ++ Dependencies.scodecBits
   )
 
 val borer = project
