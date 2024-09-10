@@ -8,7 +8,6 @@ import java.security.spec.ECParameterSpec
 import java.security.spec.ECPoint
 import java.security.spec.ECPublicKeySpec
 import soidc.jwt.OidcError.DecodeError
-import scala.util.Try
 import java.security.PrivateKey
 import java.security.spec.ECPrivateKeySpec
 import scodec.bits.ByteVector
@@ -40,16 +39,14 @@ private object EcKey:
         .flatMap(_.toRight(DecodeError("missing crv value")))
 
       point = ECPoint(xn.underlying, yn.underlying)
-      params <- Try {
+      params <- wrapSecurityApi {
         val p = AlgorithmParameters.getInstance("EC")
         p.init(new ECGenParameterSpec(crv.name))
         p.getParameterSpec(classOf[ECParameterSpec])
-      }.toEither.left.map(OidcError.SecurityApiError.apply)
+      }
       pubspec = ECPublicKeySpec(point, params)
-      kf <- Try(KeyFactory.getInstance("EC")).toEither.left
-        .map(OidcError.SecurityApiError.apply)
-      k <- Try(kf.generatePublic(pubspec)).toEither.left
-        .map(OidcError.SecurityApiError.apply)
+      kf <- wrapSecurityApi(KeyFactory.getInstance("EC"))
+      k <- wrapSecurityApi(kf.generatePublic(pubspec))
     yield k
 
   def createPrivateKey(key: JWK): Either[OidcError, PrivateKey] =
@@ -61,19 +58,16 @@ private object EcKey:
         .get[Curve](ECParam.Crv)
         .flatMap(_.toRight(DecodeError("missing crv value")))
 
-      params <- Try {
+      params <- wrapSecurityApi {
         val p = AlgorithmParameters.getInstance("EC")
         p.init(new ECGenParameterSpec(crv.name))
         p.getParameterSpec(classOf[ECParameterSpec])
-      }.toEither.left.map(OidcError.SecurityApiError.apply)
+      }
 
-      kf <- Try(KeyFactory.getInstance("EC")).toEither.left
-        .map(OidcError.SecurityApiError.apply)
+      kf <- wrapSecurityApi(KeyFactory.getInstance("EC"))
 
       pspec = ECPrivateKeySpec(s64.decodeBigInt.underlying(), params)
-      ppk <- Try(kf.generatePrivate(pspec)).toEither.left
-        .map(OidcError.SecurityApiError.apply)
-
+      ppk <- wrapSecurityApi(kf.generatePrivate(pspec))
     yield ppk
 
   def fromPkcs8PrivateKey(privateKey: String, alg: Algorithm): Either[OidcError, JWK] =
@@ -89,13 +83,11 @@ private object EcKey:
         .left
         .map(err => DecodeError(err))
 
-      kf <- Try(KeyFactory.getInstance("EC")).toEither.left
-        .map(OidcError.SecurityApiError.apply)
+      kf <- wrapSecurityApi(KeyFactory.getInstance("EC"))
 
       ppkspec = PKCS8EncodedKeySpec(ppk.toArray)
 
-      ppkey <- Try(kf.generatePrivate(ppkspec)).toEither.left
-        .map(OidcError.SecurityApiError.apply)
+      ppkey <- wrapSecurityApi(kf.generatePrivate(ppkspec))
         .map(_.asInstanceOf[ECPrivateKey])
 
       curveOid = {

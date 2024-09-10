@@ -4,6 +4,8 @@ import munit.*
 import scodec.bits.{ByteVector, hex}
 import soidc.jwt.OidcError.DecodeError
 import soidc.jwt.json.JsonDecoder
+import pdi.jwt.JwtUtils
+import pdi.jwt.JwtAlgorithm
 
 class JWSTest extends FunSuite:
 
@@ -63,12 +65,45 @@ class JWSTest extends FunSuite:
     val jws = JWS(data.header64, data.claim64).unsafeSignWith(data.rsaKey)
     assertEquals(jws.signature, Some(data.signature))
 
-  test("JWS with EC signature"):
+  test("JWS with EC signature ES256"):
     val data = Rfc7515.Appendix3
     val jws = JWS(data.heade64, data.claim64).unsafeSignWith(data.ecKey)
-    assertEquals(jws.signature, Some(data.signature))
+    assert(
+      JwtUtils.verify(
+        jws.removeSignature.compact.getBytes(),
+        jws.signature.get.decoded.toArray,
+        data.ecKey.getPublicKey.fold(throw _, identity),
+        JwtAlgorithm.ES256
+      )
+    )
+    assert(
+      JwtUtils.verify(
+        jws.removeSignature.compact.getBytes(),
+        data.signature.decoded.toArray,
+        data.ecKey.getPublicKey.fold(throw _, identity),
+        JwtAlgorithm.ES256
+      )
+    )
 
-
+  test("JWS with EC signature ES512"):
+    val data = Rfc7515.Appendix4
+    val jws = JWS(data.heade64, data.claim64).unsafeSignWith(data.ecKey)
+    assert(
+      JwtUtils.verify(
+        jws.removeSignature.compact.getBytes(),
+        jws.signature.get.decoded.toArray,
+        data.ecKey.getPublicKey.fold(throw _, identity),
+        JwtAlgorithm.ES512
+      )
+    )
+    assert(
+      JwtUtils.verify(
+        jws.removeSignature.compact.getBytes(),
+        data.signature.decoded.toArray,
+        data.ecKey.getPublicKey.fold(throw _, identity),
+        JwtAlgorithm.ES512
+      )
+    )
 
 
     // https://github.com/felx/nimbus-jose-jwt/blob/master/src/main/java/com/nimbusds/jose/jwk/ECKey.java#L1125

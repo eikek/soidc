@@ -85,7 +85,8 @@ val jwt = project
   .settings(
     name := "soidc-jwt",
     description := "JWT/JWS",
-    libraryDependencies ++= Dependencies.scodecBits
+    libraryDependencies ++= Dependencies.scodecBits ++
+      Dependencies.jwtScala.map(_ % Test)
   )
 
 val core = project

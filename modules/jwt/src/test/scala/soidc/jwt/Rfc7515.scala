@@ -110,3 +110,37 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEf83OJ3D2xF1Bg8vub9tLe1gHMzV7
 MCUCAQEEII6bEJ5xkJi/mASH3x9dd+nLKWBuvtImO19XwhPfhPSy
 -----END EC PRIVATE KEY-----"""
   }
+
+  object Appendix4 {
+    val header: JoseHeader = JoseHeader.empty.withAlgorithm(Algorithm.ES512)
+    val heade64: Base64String = Base64String.unsafeOf("eyJhbGciOiJFUzUxMiJ9")
+
+    val claim64: Base64String = Base64String.unsafeOf("UGF5bG9hZA")
+
+    val ecKey: JWK =
+      JWK(KeyType.EC)
+        .withAlgorithm(Algorithm.ES512)
+        .withValue(EcKey.ECParam.Crv, Curve.P521)
+        .withValue(
+          EcKey.ECParam.X,
+          Base64String.unsafeOf(
+            "AekpBQ8ST8a8VcfVOTNl353vSrDCLLJXmPk06wTjxrrjcBpXp5EOnYG_NjFZ6OvLFV1jSfS9tsz4qUxcWceqwQGk"
+          )
+        )
+        .withValue(
+          EcKey.ECParam.Y,
+          Base64String.unsafeOf(
+            "ADSmRA43Z1DSNx_RvcLI87cdL07l6jQyyBXMoxVg_l2Th-x3S1WDhjDly79ajL4Kkd0AZMaZmh9ubmf63e3kyMj2"
+          )
+        )
+        .withValue(
+          EcKey.ECParam.D,
+          Base64String.unsafeOf(
+            "AY5pb7A0UFiB3RELSD64fTLOSV_jazdF7fLYyuTw8lOfRhWg6Y6rUrPAxerEzgdRhajnu0ferB0d53vM9mE15j2C"
+          )
+        )
+
+    val signature: Base64String = Base64String.unsafeOf(
+      "AdwMgeerwtHoh-l192l60hp9wAHZFVJbLfD_UxMi70cwnZOYaRI1bKPWROc-mZZqwqT2SI-KGDKB34XO0aw_7XdtAG8GaSwFKdCAPZgoXD2YBJZCPEX3xKpRwcdOO8KpEHwJjyqOgzDO7iKvU8vcnwNrmxYbSW9ERBXukOXolLzeO_Jn"
+    )
+  }

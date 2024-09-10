@@ -16,6 +16,10 @@ enum Algorithm:
 
   def name: String = productPrefix
 
+  def isEC: Boolean = Set(ES256, ES384, ES512).contains(this)
+  def isHMAC: Boolean = Set(HS256, HS384, HS512).contains(this)
+  def isRSA: Boolean = Set(RS256, RS384, RS512).contains(this)
+
 object Algorithm:
   def fromString(str: String): Either[String, Algorithm] =
     Algorithm.values
