@@ -3,6 +3,7 @@ package soidc.jwt
 trait ParameterName:
   def key: String
   def description: String
+  def is(other: ParameterName): Boolean = key == other.key
 
 object ParameterName:
 

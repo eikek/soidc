@@ -6,9 +6,8 @@ import javax.crypto.spec.SecretKeySpec
 
 private object SymmetricKey:
 
-  enum Param(val key: String) extends ParameterName:
-    case K extends Param("k")
-    def description = ""
+  enum Param(val key: String, val description: String) extends ParameterName:
+    case K extends Param("k", "Key Value")
 
   def create(key: JWK): Either[OidcError, ByteVector] =
     for

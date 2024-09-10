@@ -1,13 +1,13 @@
 package soidc.jwt
 
-import scala.util.control.NoStackTrace
+//import scala.util.control.NoStackTrace
 
 trait OidcError extends Throwable
 
 object OidcError:
 
   final case class DecodeError(message: String, cause: Option[Throwable] = None)
-      extends NoStackTrace
+      extends RuntimeException(message)
       with OidcError:
     cause.foreach(initCause)
 
@@ -27,9 +27,21 @@ object OidcError:
       with OidcError:
     override def fillInStackTrace(): Throwable = this
 
+  final case class UnsupportedPrivateKey(keyType: KeyType)
+      extends RuntimeException(s"Unsupported key type for creating private key: $keyType")
+      with OidcError:
+    override def fillInStackTrace(): Throwable = this
+
   final case class UnsupportedHmacAlgorithm(alg: Algorithm)
       extends RuntimeException(
         s"Unsupported algorithm for creating a secret HMAC key: $alg"
+      )
+      with OidcError:
+    override def fillInStackTrace(): Throwable = this
+
+  final case class UnsupportedSignatureAlgorithm(alg: Algorithm)
+      extends RuntimeException(
+        s"Unsupported algorithm for creating a signature: $alg"
       )
       with OidcError:
     override def fillInStackTrace(): Throwable = this

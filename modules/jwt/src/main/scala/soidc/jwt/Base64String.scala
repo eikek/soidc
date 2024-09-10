@@ -22,6 +22,9 @@ object Base64String:
   def encode(bv: ByteVector): Base64String =
     bv.toBase64(alphabet)
 
+  def encode(n: BigInt): Base64String =
+    encode(ByteVector.view(n.toByteArray))
+
   given ToJson[Base64String] = ToJson.forString
   given FromJson[Base64String] =
     FromJson.str(s => Base64String.of(s).left.map(err => OidcError.DecodeError(err)))

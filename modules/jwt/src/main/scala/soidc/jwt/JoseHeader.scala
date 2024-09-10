@@ -26,6 +26,12 @@ final case class JoseHeader(
       values = values.replace(P.Alg, alg)
     )
 
+  def withIssuer(iss: StringOrUri): JoseHeader =
+    copy(issuer = Some(iss), values = values.replace(P.Iss, iss))
+
+  def withSubject(sub: StringOrUri): JoseHeader =
+    copy(subject = Some(sub), values = values.replace(P.Sub, sub))
+
   def withKeyId(kid: KeyId): JoseHeader =
     copy(keyId = Some(kid), values = values.replace(P.Kid, kid))
 
