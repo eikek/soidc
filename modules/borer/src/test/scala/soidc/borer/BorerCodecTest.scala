@@ -2,46 +2,48 @@ package soidc.borer
 
 import munit.*
 import soidc.borer.given
-import soidc.core.*
-import soidc.core.json.syntax.*
+import soidc.jwt.*
+import soidc.jwt.json.syntax.*
 import java.time.Instant
 import scodec.bits.ByteVector
-import soidc.core.json.JsonValue
+import soidc.jwt.json.JsonValue
 
 class BorerCodecTest extends FunSuite:
 
   test("decode jwt header"):
     val token =
       "eyJ0eXAiOiJKV1QiLA0KICJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJqb2UiLA0KICJleHAiOjEzMDA4MTkzODAsDQogImh0dHA6Ly9leGFtcGxlLmNvbS9pc19yb290Ijp0cnVlfQ.dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
-    val parts = JwtParts.unsafeFromString(token)
+    val parts = JWS.unsafeFromString(token)
     val header = parts.header.as[JoseHeader].fold(throw _, identity)
     val expect =
-      JoseHeader.empty.withValue("typ", "JWT".toJsonValue).withAlgorithm(Algorithm.HS256)
+      JoseHeader.jwt.withAlgorithm(Algorithm.HS256)
     assertEquals(header, expect)
 
   test("encode jwt header"):
     val header =
-      JoseHeader.empty.withValue("typ", "JWT".toJsonValue).withAlgorithm(Algorithm.HS256)
+      JoseHeader.jwt.withAlgorithm(Algorithm.HS256)
     val json = header.toJsonUtf8
     assertEquals(json, """{"typ":"JWT","alg":"HS256"}""")
 
   test("decode jwt claim"):
     val token =
       "eyJ0eXAiOiJKV1QiLA0KICJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJqb2UiLA0KICJleHAiOjEzMDA4MTkzODAsDQogImh0dHA6Ly9leGFtcGxlLmNvbS9pc19yb290Ijp0cnVlfQ.dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
-    val parts = JwtParts.unsafeFromString(token)
+    val parts = JWS.unsafeFromString(token)
     val claims = parts.claims.as[SimpleClaims].fold(throw _, identity)
     val expect = SimpleClaims.empty
       .withIssuer(StringOrUri("joe"))
       .withExpirationTime(NumericDate.instant(Instant.parse("2011-03-22T18:43:00Z")))
-      .withValue("http://example.com/is_root", true.toJsonValue)
+      .withValue(ParameterName.of("http://example.com/is_root"), true)
     assertEquals(claims, expect)
 
   test("encode claim"):
     val claim = SimpleClaims.empty
       .withIssuer(StringOrUri("joe"))
       .withExpirationTime(NumericDate.instant(Instant.parse("2011-03-22T18:43:00Z")))
-      .withValue("http://example.com/is_root", true.toJsonValue)
-    val expect = Base64String.unsafeOf("eyJpc3MiOiJqb2UiLCJleHAiOjEzMDA4MTkzODAsImh0dHA6Ly9leGFtcGxlLmNvbS9pc19yb290Ijp0cnVlfQ")
+      .withValue(ParameterName.of("http://example.com/is_root"), true)
+    val expect = Base64String.unsafeOf(
+      "eyJpc3MiOiJqb2UiLCJleHAiOjEzMDA4MTkzODAsImh0dHA6Ly9leGFtcGxlLmNvbS9pc19yb290Ijp0cnVlfQ"
+    )
     assertEquals(Base64String.encode(claim.toJsonBytes), expect)
 
   test("decode obj{}"):
@@ -62,3 +64,25 @@ class BorerCodecTest extends FunSuite:
   test("decode double"):
     val value = ByteVector.view("15.654".getBytes)
     assertEquals(value.unsafeAs[Double], 15.654)
+
+  // test("create jws"):
+  //   val claim = SimpleClaims.empty
+  //     .withIssuer(StringOrUri("mine"))
+  //     .withExpirationTime(NumericDate.instant(Instant.parse("2025-03-22T19:00:00Z")))
+  //     .withValue(ParameterName.of("email_verified"), true)
+  //   val header = JoseHeader.jwt.withAlgorithm(Algorithm.HS256)
+  //   val jwk = JWK(KeyType.OCT).withValue(
+  //     ParameterName.of("k"),
+  //     Base64String.unsafeOf(
+  //       "AyM1SysPpbyDfgZld3umj1qzKObwVMkoqQ-EstJQLr_T-1qS0gZH75aKtMN3Yj0iPS4hcgUuTwjAzZr1Z9CAow"
+  //     )
+  //   )
+  //   val jws1 = JWS.unsigned(header, claim)
+
+  //   val secret = jwk.getSymmetricHmacKey(Algorithm.HS256).fold(throw _, identity)
+  //   val mac = javax.crypto.Mac.getInstance(secret.getAlgorithm())
+  //   mac.init(secret)
+  //   mac.update(jws1.compact.getBytes())
+
+  //   val sig = ByteVector.view(mac.doFinal())
+  //   println(Base64String.encode(sig))

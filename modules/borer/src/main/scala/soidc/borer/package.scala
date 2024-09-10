@@ -4,8 +4,8 @@ import io.bullet.borer.Json
 import io.bullet.borer.compat.scodec.*
 import io.bullet.borer.{Decoder, Encoder}
 import scodec.bits.ByteVector
-import soidc.core.OidcError
-import soidc.core.json.{JsonDecoder, JsonEncoder}
+import soidc.jwt.OidcError
+import soidc.jwt.json.{JsonDecoder, JsonEncoder}
 
 package object borer extends BorerJsonCodec {
 

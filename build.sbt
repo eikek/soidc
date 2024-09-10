@@ -77,6 +77,17 @@ val buildInfoSettings = Seq(
   buildInfoPackage := "keeper"
 )
 
+val jwt = project
+  .in(file("modules/jwt"))
+  .settings(sharedSettings)
+  .settings(testSettings)
+  .settings(scalafixSettings)
+  .settings(
+    name := "soidc-jwt",
+    description := "JWT/JWS",
+    libraryDependencies ++= Dependencies.scodecBits
+  )
+
 val core = project
   .in(file("modules/core"))
   .settings(sharedSettings)
@@ -86,8 +97,9 @@ val core = project
     name := "soidc-core",
     description := "Core module",
     libraryDependencies ++=
-      Dependencies.jwtScala ++ Dependencies.scodecBits
+      Dependencies.catsCore
   )
+  .dependsOn(jwt)
 
 val borer = project
   .in(file("modules/borer"))
@@ -156,4 +168,4 @@ val root = project
   .settings(
     name := "soidc-root"
   )
-  .aggregate(core, borer, http4sClient, http4sRoutes)
+  .aggregate(jwt, core, borer, http4sClient, http4sRoutes)
