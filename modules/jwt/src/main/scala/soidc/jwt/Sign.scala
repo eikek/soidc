@@ -48,15 +48,33 @@ private object Sign:
       }
       xs <-
         if (alg.isEC) ecExpectedSignatureLength(alg).flatMap { len =>
-          wrapSecurityApi(transcodeSignatureToConcat(signature.sign, len))
+          derSignatureToRS(ByteVector.view(signature.sign), len)
+          // wrapSecurityApi(transcodeSignatureToConcat(signature.sign, len))
         }
-        else wrapSecurityApi(signature.sign)
-      s = ByteVector.view(xs)
-    yield s
+        else wrapSecurityApi(ByteVector.view(signature.sign))
+//      s = ByteVector.view(xs)
+    yield xs
 
   // TODO https://bitcoin.stackexchange.com/questions/77191/what-is-the-maximum-size-of-a-der-encoded-ecdsa-signature
   // https://en.wikipedia.org/wiki/Two%27s_complement
   // https://superuser.com/questions/1023167/can-i-extract-r-and-s-from-an-ecdsa-signature-in-bit-form-and-vica-versa
+
+  def derSignatureToRS(der: ByteVector, outLen: Int): Either[OidcError, ByteVector] =
+    (for
+      (rem0, _) <- der.consume(1)(bv =>
+        Either.cond(bv.head == 0x30, (), s"Invalid DER signature: header byte: $bv")
+      )
+      offset = if (rem0.head > 0) 2 else 3
+      (rem1, rLen) <- rem0.consume(offset + 1)(bv => Right(bv.last.toLong))
+      (rem2, r) <- rem1.consume(rLen)(bv =>
+        Right(bv.dropWhile(_ == 0).padLeft(outLen / 2))
+      )
+      (rem3, sLen) <- rem2.consume(2)(bv => Right(bv.last.toLong))
+      (rem4, s) <- rem3.consume(sLen)(bv =>
+        Right(bv.dropWhile(_ == 0).padLeft(outLen / 2))
+      )
+      _ <- Either.cond(rem4.isEmpty, (), "Invalid DER signature")
+    yield r ++ s).left.map(OidcError.DecodeError(_))
 
   /** Transcodes the JCA ASN.1/DER-encoded signature into the concatenated R + S format
     * expected by ECDSA JWS.
@@ -70,6 +88,7 @@ private object Sign:
     * @throws JwtSignatureFormatException
     *   If the ASN.1/DER signature format is invalid.
     */
+  @annotation.nowarn()
   private def transcodeSignatureToConcat(
       derSignature: Array[Byte],
       outputLength: Int
