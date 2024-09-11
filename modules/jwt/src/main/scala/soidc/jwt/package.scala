@@ -1,9 +1,10 @@
 package soidc
 
-import soidc.jwt.json.{FromJson, JsonValue}
-import soidc.jwt.json.FromJson.syntax.*
-import soidc.jwt.OidcError.{DecodeError, SecurityApiError}
 import scala.util.Try
+
+import soidc.jwt.JwtError.{DecodeError, SecurityApiError}
+import soidc.jwt.json.FromJson.syntax.*
+import soidc.jwt.json.{FromJson, JsonValue}
 
 package object jwt {
   private def wrapSecurityApi[A](code: => A): Either[SecurityApiError, A] =

@@ -1,9 +1,9 @@
 package soidc.jwt
 
 import munit.*
+import soidc.jwt.RegisteredParameterName as P
 import soidc.jwt.json.JsonValue
 import soidc.jwt.json.ToJson.syntax.*
-import soidc.jwt.RegisteredParameterName as P
 
 class JoseHeaderTest extends FunSuite:
 

@@ -1,6 +1,6 @@
 package soidc.jwt
 
-import soidc.jwt.OidcError.DecodeError
+import soidc.jwt.JwtError.DecodeError
 import soidc.jwt.json.{FromJson, ToJson}
 
 opaque type Uri = String

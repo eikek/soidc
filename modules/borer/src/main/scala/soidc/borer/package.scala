@@ -4,7 +4,7 @@ import io.bullet.borer.Json
 import io.bullet.borer.compat.scodec.*
 import io.bullet.borer.{Decoder, Encoder}
 import scodec.bits.ByteVector
-import soidc.jwt.OidcError
+import soidc.jwt.JwtError
 import soidc.jwt.json.{JsonDecoder, JsonEncoder}
 
 package object borer extends BorerJsonCodec {
@@ -17,7 +17,7 @@ package object borer extends BorerJsonCodec {
         .valueEither
         .left
         .map(err =>
-          OidcError.DecodeError("Error decoding from json using borer", Some(err))
+          JwtError.DecodeError("Error decoding from json using borer", Some(err))
         )
     }
 

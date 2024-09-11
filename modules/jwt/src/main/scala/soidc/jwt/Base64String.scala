@@ -2,7 +2,7 @@ package soidc.jwt
 
 import scodec.bits.Bases.Alphabets
 import scodec.bits.ByteVector
-import soidc.jwt.OidcError.DecodeError
+import soidc.jwt.JwtError.DecodeError
 import soidc.jwt.json.JsonDecoder
 import soidc.jwt.json.{FromJson, ToJson}
 
@@ -27,7 +27,7 @@ object Base64String:
 
   given ToJson[Base64String] = ToJson.forString
   given FromJson[Base64String] =
-    FromJson.str(s => Base64String.of(s).left.map(err => OidcError.DecodeError(err)))
+    FromJson.str(s => Base64String.of(s).left.map(err => JwtError.DecodeError(err)))
 
   extension (self: Base64String)
     def value: String = self

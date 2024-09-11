@@ -1,12 +1,13 @@
 package soidc.jwt
 
-import soidc.jwt.OidcError.DecodeError
-import soidc.jwt.json.*
-import soidc.jwt.RegisteredParameterName as P
-import java.security.PublicKey
-import scodec.bits.ByteVector
-import javax.crypto.spec.SecretKeySpec
 import java.security.PrivateKey
+import java.security.PublicKey
+import javax.crypto.spec.SecretKeySpec
+
+import scodec.bits.ByteVector
+import soidc.jwt.JwtError.DecodeError
+import soidc.jwt.RegisteredParameterName as P
+import soidc.jwt.json.*
 
 final case class JWK(
     keyType: KeyType,
@@ -28,26 +29,26 @@ final case class JWK(
   def withKeyType(kty: KeyType): JWK =
     copy(keyType = kty, values = values.replace(P.Kty, kty))
 
-  def getPublicKey: Either[OidcError, PublicKey] =
+  def getPublicKey: Either[JwtError, PublicKey] =
     keyType match
       case KeyType.RSA => RsaKey.createPublicKey(this)
       case KeyType.EC  => EcKey.createPublicKey(this)
-      case KeyType.OCT => Left(OidcError.UnsupportedPublicKey(keyType))
-      case KeyType.OKP => Left(OidcError.UnsupportedPublicKey(keyType))
+      case KeyType.OCT => Left(JwtError.UnsupportedPublicKey(keyType))
+      case KeyType.OKP => Left(JwtError.UnsupportedPublicKey(keyType))
 
-  def getPrivateKey: Either[OidcError, PrivateKey] =
+  def getPrivateKey: Either[JwtError, PrivateKey] =
     keyType match
       case KeyType.RSA => RsaKey.createPrivateKey(this)
       case KeyType.EC  => EcKey.createPrivateKey(this)
-      case KeyType.OCT => Left(OidcError.UnsupportedPrivateKey(keyType))
-      case KeyType.OKP => Left(OidcError.UnsupportedPrivateKey(keyType))
+      case KeyType.OCT => Left(JwtError.UnsupportedPrivateKey(keyType))
+      case KeyType.OKP => Left(JwtError.UnsupportedPrivateKey(keyType))
 
-  def getSymmetricKey: Either[OidcError, ByteVector] =
+  def getSymmetricKey: Either[JwtError, ByteVector] =
     keyType match
       case KeyType.OCT => SymmetricKey.create(this)
-      case _           => Left(OidcError.UnsupportedSymmetricKey(keyType))
+      case _           => Left(JwtError.UnsupportedSymmetricKey(keyType))
 
-  def getSymmetricHmacKey: Either[OidcError, SecretKeySpec] =
+  def getSymmetricHmacKey: Either[JwtError, SecretKeySpec] =
     for
       bv <- getSymmetricKey
       algOpt <- Right(algorithm).orElse(get[Algorithm](P.Alg))
@@ -56,17 +57,21 @@ final case class JWK(
     yield SecretKeySpec(bv.toArray, name)
 
 object JWK:
-  def symmetric(key: ByteVector, alg: Algorithm = Algorithm.HS256): JWK =
+  def symmetric(key: ByteVector, alg: Algorithm): JWK =
     symmetric(Base64String.encode(key), alg)
 
   def symmetric(key: Base64String, alg: Algorithm): JWK =
     JWK(KeyType.OCT).withValue(SymmetricKey.Param.K, key).withAlgorithm(alg)
 
-  def rsaPrivate(pkcs8PrivateKey: String, alg: Algorithm): Either[OidcError, JWK] =
+  def rsaPrivate(pkcs8PrivateKey: String, alg: Algorithm): Either[JwtError, JWK] =
     RsaKey.fromPkcs8PrivateKey(pkcs8PrivateKey, alg)
 
-  def ecPrivate(pkcs8PrivateKey: String, alg: Algorithm): Either[OidcError, JWK] =
-    EcKey.fromPkcs8PrivateKey(pkcs8PrivateKey, alg)
+  def ecPrivate(
+      pkcs8PrivateKey: String,
+      pkcs8PublicKey: String,
+      alg: Algorithm
+  ): Either[JwtError, JWK] =
+    EcKey.fromPkcs8PrivateKey(pkcs8PrivateKey, pkcs8PublicKey, alg)
 
   def fromObj(values: JsonValue.Obj): Either[DecodeError, JWK] =
     for

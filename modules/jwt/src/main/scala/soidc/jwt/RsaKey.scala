@@ -1,16 +1,17 @@
 package soidc.jwt
 
 import java.security.KeyFactory
-import java.security.{PrivateKey, PublicKey}
-import java.security.spec.RSAPublicKeySpec
-
-import soidc.jwt.OidcError.DecodeError
-import scala.util.Try
-import java.security.spec.RSAPrivateKeySpec
-import java.security.spec.PKCS8EncodedKeySpec
-import scodec.bits.ByteVector
-import scodec.bits.Bases.Alphabets
 import java.security.interfaces.RSAPrivateCrtKey
+import java.security.spec.PKCS8EncodedKeySpec
+import java.security.spec.RSAPrivateKeySpec
+import java.security.spec.RSAPublicKeySpec
+import java.security.{PrivateKey, PublicKey}
+
+import scala.util.Try
+
+import scodec.bits.Bases.Alphabets
+import scodec.bits.ByteVector
+import soidc.jwt.JwtError.DecodeError
 
 private[jwt] object RsaKey:
 
@@ -21,7 +22,7 @@ private[jwt] object RsaKey:
     case P extends Param("p", "First Prime Factor")
     case Q extends Param("q", "Second Prime Factor")
 
-  def createPublicKey(key: JWK): Either[OidcError, PublicKey] =
+  def createPublicKey(key: JWK): Either[JwtError, PublicKey] =
     for
       mod64 <- key
         .get[Base64String](Param.N)
@@ -32,15 +33,15 @@ private[jwt] object RsaKey:
         .flatMap(_.toRight(DecodeError("exponent parameter missing")))
       exp = exp64.decodeBigInt
       kf <- Try(KeyFactory.getInstance("RSA")).toEither.left
-        .map(OidcError.SecurityApiError.apply)
+        .map(JwtError.SecurityApiError.apply)
 
       key <- Try(
         kf.generatePublic(RSAPublicKeySpec(mod.underlying, exp.underlying))
       ).toEither.left
-        .map(OidcError.SecurityApiError.apply)
+        .map(JwtError.SecurityApiError.apply)
     yield key
 
-  def createPrivateKey(key: JWK): Either[OidcError, PrivateKey] =
+  def createPrivateKey(key: JWK): Either[JwtError, PrivateKey] =
     for
       mod64 <- key
         .get[Base64String](Param.N)
@@ -52,15 +53,15 @@ private[jwt] object RsaKey:
       exp = exp64.decodeBigInt
 
       kf <- Try(KeyFactory.getInstance("RSA")).toEither.left
-        .map(OidcError.SecurityApiError.apply)
+        .map(JwtError.SecurityApiError.apply)
 
       ppk <- Try(
         kf.generatePrivate(RSAPrivateKeySpec(mod.underlying, exp.underlying))
       ).toEither.left
-        .map(OidcError.SecurityApiError.apply)
+        .map(JwtError.SecurityApiError.apply)
     yield ppk
 
-  def fromPkcs8PrivateKey(key: String, alg: Algorithm): Either[OidcError, JWK] =
+  def fromPkcs8PrivateKey(key: String, alg: Algorithm): Either[JwtError, JWK] =
     for
       _ <- signAlgoName(alg)
       b64 <- ByteVector
@@ -73,12 +74,12 @@ private[jwt] object RsaKey:
         .left
         .map(err => DecodeError(err))
       kf <- Try(KeyFactory.getInstance("RSA")).toEither.left
-        .map(OidcError.SecurityApiError.apply)
+        .map(JwtError.SecurityApiError.apply)
 
       kspec = PKCS8EncodedKeySpec(b64.toArray)
 
       ppk <- Try(kf.generatePrivate(kspec)).toEither.left
-        .map(OidcError.SecurityApiError.apply)
+        .map(JwtError.SecurityApiError.apply)
         .map(_.asInstanceOf[RSAPrivateCrtKey])
 
       jwk = JWK(KeyType.RSA)
@@ -90,9 +91,9 @@ private[jwt] object RsaKey:
         .withValue(Param.Q, Base64String.encode(ppk.getPrimeQ()))
     yield jwk
 
-  private[jwt] def signAlgoName(alg: Algorithm): Either[OidcError, String] =
+  private[jwt] def signAlgoName(alg: Algorithm): Either[JwtError, String] =
     alg match
       case Algorithm.RS256 => Right("SHA256withRSA")
       case Algorithm.RS384 => Right("SHA384withRSA")
       case Algorithm.RS512 => Right("SHA512withRSA")
-      case _               => Left(OidcError.UnsupportedSignatureAlgorithm(alg))
+      case _               => Left(JwtError.UnsupportedSignatureAlgorithm(alg))

@@ -1,8 +1,8 @@
 package soidc.jwt
 
-import soidc.jwt.OidcError.DecodeError
-import soidc.jwt.json.{FromJson, JsonValue, ToJson}
+import soidc.jwt.JwtError.DecodeError
 import soidc.jwt.RegisteredParameterName as P
+import soidc.jwt.json.{FromJson, JsonValue, ToJson}
 
 final case class SimpleClaims(
     issuer: Option[StringOrUri],

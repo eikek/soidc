@@ -1,8 +1,8 @@
 package soidc.jwt
 
 import munit.*
-import soidc.jwt.json.JsonValue
 import soidc.jwt.json.FromJson.syntax.*
+import soidc.jwt.json.JsonValue
 
 class FromJsonTest extends FunSuite:
 

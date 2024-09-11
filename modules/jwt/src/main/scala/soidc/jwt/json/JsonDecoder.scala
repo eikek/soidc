@@ -1,7 +1,7 @@
 package soidc.jwt.json
 
 import scodec.bits.ByteVector
-import soidc.jwt.OidcError.DecodeError
+import soidc.jwt.JwtError.DecodeError
 
 trait JsonDecoder[A]:
   def decode(json: ByteVector): Either[DecodeError, A]

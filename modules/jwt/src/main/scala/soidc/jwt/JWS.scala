@@ -1,5 +1,6 @@
 package soidc.jwt
 
+import scodec.bits.ByteVector
 import soidc.jwt.json.JsonEncoder
 
 /** A JSON Web Signature.
@@ -18,16 +19,23 @@ final case class JWS(
   def removeSignature: JWS =
     copy(signature = None)
 
-  def compact: String =
+  lazy val compact: String =
     val sig = signature.map(s => s".${s}").getOrElse("")
     s"${header.value}.${claims.value}${sig}"
 
-  def signWith(key: JWK): Either[OidcError, JWS] =
-    val sig = Sign.signWith(removeSignature.compact.getBytes(), key)
+  lazy val payload: ByteVector =
+    ByteVector.encodeUtf8(header.value).fold(throw _, identity) ++
+      ('.'.toByte +: ByteVector.encodeUtf8(claims.value).fold(throw _, identity))
+
+  def signWith(key: JWK): Either[JwtError, JWS] =
+    val sig = Sign.signWith(payload.toArray, key)
     sig.map(bv => withSignature(Base64String.encode(bv)))
 
   def unsafeSignWith(key: JWK): JWS =
     signWith(key).fold(throw _, identity)
+
+  def verify(key: JWK): Either[JwtError, Boolean] =
+    Verify.verifyJWS(this, key)
 
 object JWS:
 
@@ -44,9 +52,9 @@ object JWS:
   def signed[H, C](header: H, claims: C, key: JWK)(using
       JsonEncoder[H],
       JsonEncoder[C]
-  ): Either[OidcError, JWS] =
+  ): Either[JwtError, JWS] =
     val raw = unsigned(header, claims)
-    val sig = Sign.signWith(raw.compact.getBytes(), key)
+    val sig = Sign.signWith(raw.payload.toArray, key)
     sig.map(bv => raw.withSignature(Base64String.encode(bv)))
 
   def unsafeSigned[H, C](header: H, claims: C, key: JWK)(using

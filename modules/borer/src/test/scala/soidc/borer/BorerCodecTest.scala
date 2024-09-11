@@ -1,12 +1,13 @@
 package soidc.borer
 
+import java.time.Instant
+
 import munit.*
+import scodec.bits.ByteVector
 import soidc.borer.given
 import soidc.jwt.*
-import soidc.jwt.json.syntax.*
-import java.time.Instant
-import scodec.bits.ByteVector
 import soidc.jwt.json.JsonValue
+import soidc.jwt.json.syntax.*
 
 class BorerCodecTest extends FunSuite:
 
