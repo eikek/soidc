@@ -17,9 +17,6 @@ final case class JWK(
     algorithm: Option[Algorithm] = None,
     values: JsonValue.Obj = JsonValue.emptyObj
 ):
-  def get[A: FromJson](name: ParameterName): Either[DecodeError, Option[A]] =
-    values.get(name).traverseConvert[A]
-
   def withValue[V: ToJson](param: ParameterName, value: V): JWK =
     copy(values = values.replace(param, value))
 
@@ -51,8 +48,7 @@ final case class JWK(
   def getSymmetricHmacKey: Either[JwtError, SecretKeySpec] =
     for
       bv <- getSymmetricKey
-      algOpt <- Right(algorithm).orElse(get[Algorithm](P.Alg))
-      alg <- algOpt.toRight(DecodeError("no algorithm"))
+      alg <- algorithm.map(Right(_)).getOrElse(values.requireAs[Algorithm](P.Alg))
       name <- SymmetricKey.hmacName(alg)
     yield SecretKeySpec(bv.toArray, name)
 
@@ -75,12 +71,11 @@ object JWK:
 
   def fromObj(values: JsonValue.Obj): Either[DecodeError, JWK] =
     for
-      ktyo <- values.get(P.Kty).traverseConvert[KeyType]
-      kty <- ktyo.toRight(DecodeError(s"key-type is missing in JWK: $values"))
-      kid <- values.get(P.Kid).traverseConvert[KeyId]
-      us <- values.get(P.Use).traverseConvert[KeyUse]
-      keyop <- values.get(P.KeyOps).traverseConvert[List[KeyOperation]]
-      alg <- values.get(P.Alg).traverseConvert[Algorithm]
+      kty <- values.requireAs[KeyType](P.Kty)
+      kid <- values.getAs[KeyId](P.Kid)
+      us <- values.getAs[KeyUse](P.Use)
+      keyop <- values.getAs[List[KeyOperation]](P.KeyOps)
+      alg <- values.getAs[Algorithm](P.Alg)
     yield JWK(kty, us, keyop.getOrElse(Nil), kid, alg, values)
 
   given FromJson[JWK] = FromJson.obj(fromObj)

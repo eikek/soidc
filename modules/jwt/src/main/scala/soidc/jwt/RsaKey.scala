@@ -24,13 +24,9 @@ private[jwt] object RsaKey:
 
   def createPublicKey(key: JWK): Either[JwtError, PublicKey] =
     for
-      mod64 <- key
-        .get[Base64String](Param.N)
-        .flatMap(_.toRight(DecodeError("modulus parameter missing")))
+      mod64 <- key.values.requireAs[Base64String](Param.N)
       mod = mod64.decodeBigInt
-      exp64 <- key
-        .get[Base64String](Param.E)
-        .flatMap(_.toRight(DecodeError("exponent parameter missing")))
+      exp64 <- key.values.requireAs[Base64String](Param.E)
       exp = exp64.decodeBigInt
       kf <- Try(KeyFactory.getInstance("RSA")).toEither.left
         .map(JwtError.SecurityApiError.apply)
@@ -43,13 +39,9 @@ private[jwt] object RsaKey:
 
   def createPrivateKey(key: JWK): Either[JwtError, PrivateKey] =
     for
-      mod64 <- key
-        .get[Base64String](Param.N)
-        .flatMap(_.toRight(DecodeError("modulus parameter missing")))
+      mod64 <- key.values.requireAs[Base64String](Param.N)
       mod = mod64.decodeBigInt
-      exp64 <- key
-        .get[Base64String](Param.D)
-        .flatMap(_.toRight(DecodeError("private exponent parameter missing")))
+      exp64 <- key.values.requireAs[Base64String](Param.D)
       exp = exp64.decodeBigInt
 
       kf <- Try(KeyFactory.getInstance("RSA")).toEither.left
@@ -91,7 +83,9 @@ private[jwt] object RsaKey:
         .withValue(Param.Q, Base64String.encode(ppk.getPrimeQ()))
     yield jwk
 
-  private[jwt] def signAlgoName(alg: Algorithm): Either[JwtError, String] =
+  private[jwt] def signAlgoName(
+      alg: Algorithm
+  ): Either[JwtError.UnsupportedSignatureAlgorithm, String] =
     alg match
       case Algorithm.RS256 => Right("SHA256withRSA")
       case Algorithm.RS384 => Right("SHA384withRSA")

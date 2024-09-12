@@ -3,10 +3,9 @@ package soidc.jwt
 import java.security.Signature
 
 import scodec.bits.ByteVector
-import soidc.jwt.JwtError.DecodeError
 
 object Verify:
-  def verifyJWS(jws: JWS, key: JWK): Either[JwtError, Boolean] =
+  def verifyJWS(jws: JWS, key: JWK): Either[JwtError.VerifyError, Boolean] =
     jws.signature
       .map { sig =>
         verifyWith(jws.payload.toArray, sig.decoded.toArray, key)
@@ -17,11 +16,14 @@ object Verify:
       payload: Array[Byte],
       signature: Array[Byte],
       key: JWK
-  ): Either[JwtError, Boolean] =
+  ): Either[JwtError.VerifyError, Boolean] =
     key.keyType match
       case KeyType.OCT =>
         for
-          sig <- Sign.signWith(payload, key)
+          sig <- Sign
+            .signWith(payload, key)
+            .left
+            .map(JwtError.SignatureCreationError.apply)
           res = sig.equalsConstantTime(ByteVector.view(signature))
         yield res
 
@@ -38,16 +40,17 @@ object Verify:
       key: JWK,
       payload: Array[Byte],
       sig: Array[Byte],
-      algoName: Algorithm => Either[JwtError, String]
-  ) =
+      algoName: Algorithm => Either[JwtError.VerifyError, String]
+  ): Either[JwtError.VerifyError, Boolean] =
     for
-      alg <- key.algorithm.toRight(JwtError.DecodeError("No algorithm in JWK"))
+      alg <- key.algorithm.toRight(JwtError.AlgorithmMissing(key))
       algName <- algoName(alg)
-      pk <- key.getPublicKey
-      signature <- wrapSecurityApi(Signature.getInstance(algName))
-      _ <- wrapSecurityApi {
-        signature.initVerify(pk)
-        signature.update(payload)
+      pk <- key.getPublicKey.left.map(JwtError.InvalidPublicKey(_, key))
+      signature <- wrapSecurityApi {
+        val sig = Signature.getInstance(algName)
+        sig.initVerify(pk)
+        sig.update(payload)
+        sig
       }
       res <-
         if (alg.isEC)
@@ -56,7 +59,9 @@ object Verify:
         else wrapSecurityApi(signature.verify(sig))
     yield res
 
-  private def rsSignatureToDER(sig: ByteVector): Either[JwtError, ByteVector] =
+  private def rsSignatureToDER(
+      sig: ByteVector
+  ): Either[JwtError.InvalidECSignature, ByteVector] =
     def twoc(b: ByteVector) =
       val b1 = b.dropWhile(_ == 0)
       if (b1.nonEmpty && b1.head < 0) 0.toByte +: b1
@@ -71,7 +76,7 @@ object Verify:
       val h = ByteVector(0x30.toByte)
       if (len >= 128) h :+ 0x81.toByte else h
     }
-    if (len > 255) Left(DecodeError("Invalid ECDSA signature"))
+    if (len > 255) Left(JwtError.InvalidECSignature(sig))
     else
       Right(
         header ++ ByteVector(len.toByte) ++ ByteVector(

@@ -13,10 +13,6 @@ final case class SimpleClaims(
     jwtId: Option[String],
     values: JsonValue.Obj
 ):
-
-  def get[A: FromJson](key: ParameterName): Either[DecodeError, Option[A]] =
-    values.get(key).traverseConvert[A]
-
   def withIssuer(iss: StringOrUri): SimpleClaims =
     copy(issuer = Some(iss), values = values.replace(P.Iss, iss))
 
@@ -32,12 +28,12 @@ object SimpleClaims:
 
   def fromObj(values: JsonValue.Obj): Either[DecodeError, SimpleClaims] =
     for
-      iss <- values.get(P.Iss).traverseConvert[StringOrUri]
-      sub <- values.get(P.Sub).traverseConvert[StringOrUri]
-      aud <- values.get(P.Aud).traverseConvert[List[StringOrUri]]
-      exp <- values.get(P.Exp).traverseConvert[NumericDate]
-      nbf <- values.get(P.Nbf).traverseConvert[NumericDate]
-      jti <- values.get(P.Jti).traverseConvert[String]
+      iss <- values.getAs[StringOrUri](P.Iss)
+      sub <- values.getAs[StringOrUri](P.Sub)
+      aud <- values.getAs[List[StringOrUri]](P.Aud)
+      exp <- values.getAs[NumericDate](P.Exp)
+      nbf <- values.getAs[NumericDate](P.Nbf)
+      jti <- values.getAs[String](P.Jti)
     yield SimpleClaims(iss, sub, aud.getOrElse(Nil), exp, nbf, jti, values)
 
   given FromJson[SimpleClaims] = FromJson.obj(fromObj)

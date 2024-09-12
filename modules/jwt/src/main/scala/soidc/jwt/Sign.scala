@@ -8,11 +8,11 @@ import scodec.bits.ByteVector
 
 object Sign:
 
-  def signWith(payload: Array[Byte], key: JWK): Either[JwtError, ByteVector] =
+  def signWith(payload: Array[Byte], key: JWK): Either[JwtError.SignError, ByteVector] =
     key.keyType match
       case KeyType.OCT =>
         for
-          secret <- key.getSymmetricHmacKey
+          secret <- key.getSymmetricHmacKey.left.map(JwtError.InvalidPrivateKey(_, key))
           mac <- getMac(secret)
           _ <- wrapSecurityApi(mac.update(payload))
           s = ByteVector.view(mac.doFinal())
@@ -26,7 +26,7 @@ object Sign:
 
       case KeyType.OKP => Left(JwtError.UnsupportedPrivateKey(key.keyType))
 
-  private def getMac(secret: SecretKey): Either[JwtError, Mac] =
+  private def getMac(secret: SecretKey): Either[JwtError.SecurityApiError, Mac] =
     wrapSecurityApi {
       val m = Mac.getInstance(secret.getAlgorithm())
       m.init(secret)
@@ -36,12 +36,12 @@ object Sign:
   private def signAsymmetric(
       key: JWK,
       payload: Array[Byte],
-      algoName: Algorithm => Either[JwtError, String]
-  ) =
+      algoName: Algorithm => Either[JwtError.UnsupportedSignatureAlgorithm, String]
+  ): Either[JwtError.SignError, ByteVector] =
     for
-      alg <- key.algorithm.toRight(JwtError.DecodeError("No algorithm in JWK"))
+      alg <- key.algorithm.toRight(JwtError.AlgorithmMissing(key))
       algName <- algoName(alg)
-      ppk <- key.getPrivateKey
+      ppk <- key.getPrivateKey.left.map(JwtError.InvalidPrivateKey(_, key))
       signature <- wrapSecurityApi(Signature.getInstance(algName))
       _ <- wrapSecurityApi {
         signature.initSign(ppk)
@@ -55,7 +55,10 @@ object Sign:
     yield sig
 
   /** Converts a EC signature in DER format into the "R+S" format required by JWT */
-  def derSignatureToRS(der: ByteVector, outLen: Int): Either[JwtError, ByteVector] =
+  def derSignatureToRS(
+      der: ByteVector,
+      outLen: Int
+  ): Either[JwtError.InvalidECSignature, ByteVector] =
     (for
       (rem0, _) <- der.consume(1)(bv =>
         Either.cond(bv.head == 0x30, (), s"Invalid DER signature: header byte: $bv")
@@ -70,10 +73,10 @@ object Sign:
         Right(bv.dropWhile(_ == 0).padLeft(outLen / 2))
       )
       _ <- Either.cond(rem4.isEmpty, (), "Invalid DER signature")
-    yield r ++ s).left.map(JwtError.DecodeError(_))
+    yield r ++ s).left.map(msg => JwtError.InvalidECSignature(der, Some(msg)))
 
   private def ecExpectedSignatureLength(alg: Algorithm) = alg match
     case Algorithm.ES256 => Right(64)
     case Algorithm.ES384 => Right(96)
     case Algorithm.ES512 => Right(132)
-    case _ => Left(JwtError.DecodeError(s"Invalid algorithm for EC signatures: $alg"))
+    case _               => Left(JwtError.UnsupportedSignatureAlgorithm(alg))

@@ -13,10 +13,6 @@ final case class JoseHeader(
     audience: List[StringOrUri],
     values: JsonValue.Obj
 ):
-
-  def get[A: FromJson](param: ParameterName): Either[DecodeError, Option[A]] =
-    values.get(param).traverseConvert[A]
-
   def withValue[V: ToJson](param: ParameterName, value: V): JoseHeader =
     copy(values = values.replace(param, value))
 
@@ -43,12 +39,12 @@ object JoseHeader:
 
   def fromObj(values: JsonValue.Obj): Either[DecodeError, JoseHeader] =
     for
-      alg <- values.get(P.Alg).traverseConvert[Algorithm]
-      kid <- values.get(P.Kid).traverseConvert[KeyId]
-      cty <- values.get(P.Cty).traverseConvert[String]
-      iss <- values.get(P.Iss).traverseConvert[StringOrUri]
-      sub <- values.get(P.Sub).traverseConvert[StringOrUri]
-      aud <- values.get(P.Aud).traverseConvert[List[StringOrUri]]
+      alg <- values.getAs[Algorithm](P.Alg)
+      kid <- values.getAs[KeyId](P.Kid)
+      cty <- values.getAs[String](P.Cty)
+      iss <- values.getAs[StringOrUri](P.Iss)
+      sub <- values.getAs[StringOrUri](P.Sub)
+      aud <- values.getAs[List[StringOrUri]](P.Aud)
     yield JoseHeader(alg, kid, cty, iss, sub, aud.getOrElse(Nil), values)
 
   given FromJson[JoseHeader] = FromJson.obj(fromObj)

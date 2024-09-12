@@ -3,7 +3,6 @@ package soidc.jwt
 import javax.crypto.spec.SecretKeySpec
 
 import scodec.bits.ByteVector
-import soidc.jwt.JwtError.DecodeError
 
 private object SymmetricKey:
 
@@ -12,9 +11,7 @@ private object SymmetricKey:
 
   def create(key: JWK): Either[JwtError, ByteVector] =
     for
-      k64 <- key
-        .get[Base64String](Param.K)
-        .flatMap(_.toRight(DecodeError("Missing 'k' value in")))
+      k64 <- key.values.requireAs[Base64String](Param.K)
       k = k64.decoded
     yield k
 

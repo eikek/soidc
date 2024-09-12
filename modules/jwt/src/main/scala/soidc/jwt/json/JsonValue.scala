@@ -1,5 +1,6 @@
 package soidc.jwt.json
 
+import soidc.jwt.JwtError.DecodeError
 import soidc.jwt.ParameterName
 import soidc.jwt.json.ToJson.syntax.*
 
@@ -8,16 +9,31 @@ sealed trait JsonValue:
   def widen: JsonValue = this
 
 object JsonValue:
-  final case class Str(value: String) extends JsonValue
-  final case class Bool(value: Boolean) extends JsonValue
-  final case class Num(value: BigDecimal) extends JsonValue
+  sealed trait JsonPrimitive extends JsonValue
+
+  final case class Str(value: String) extends JsonPrimitive
+  final case class Bool(value: Boolean) extends JsonPrimitive
+  final case class Num(value: BigDecimal) extends JsonPrimitive
   final case class Arr(value: List[JsonValue]) extends JsonValue
   final case class Obj(value: Map[String, JsonValue]) extends JsonValue:
     def get(name: ParameterName): Option[JsonValue] =
       value.get(name.key)
 
+    def getAs[A](name: ParameterName)(using
+        dec: FromJson[A]
+    ): Either[DecodeError, Option[A]] =
+      get(name).map(dec.from).map(_.map(Some(_))).getOrElse(Right(None))
+
+    def requireAs[A](name: ParameterName)(using FromJson[A]): Either[DecodeError, A] =
+      getAs[A](name).flatMap(
+        _.toRight(DecodeError(s"Missing json property: ${name.key}"))
+      )
+
     def replace[V: ToJson](name: ParameterName, v: V): Obj =
       Obj(value.updated(name.key, v.toJsonValue))
+
+    def replaceIfDefined[V: ToJson](name: ParameterName, v: Option[V]): Obj =
+      v.map(replace(name, _)).getOrElse(this)
 
     def remove(name: ParameterName): Obj =
       Obj(value.removed(name.key))
@@ -29,4 +45,6 @@ object JsonValue:
   def num(value: BigDecimal): JsonValue = Num(value)
   def bool(value: Boolean): JsonValue = Bool(value)
   def arr(v: JsonValue*): JsonValue = Arr(v.toList)
-  def obj(v: (String, JsonValue)*): JsonValue = Obj(v.toMap)
+  def obj[A: ToJson](v: (String, A)*): JsonValue = Obj(
+    v.map(t => (t._1, t._2.toJsonValue)).toMap
+  )

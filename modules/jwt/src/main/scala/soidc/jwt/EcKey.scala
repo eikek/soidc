@@ -29,18 +29,11 @@ private object EcKey:
 
   def createPublicKey(key: JWK): Either[JwtError, PublicKey] =
     for
-      xn64 <- key
-        .get[Base64String](ECParam.X)
-        .flatMap(_.toRight(DecodeError("missing x value")))
+      xn64 <- key.values.requireAs[Base64String](ECParam.X)
       xn = xn64.decodeBigInt
-      yn64 <- key
-        .get[Base64String](ECParam.Y)
-        .flatMap(_.toRight(DecodeError("missing y value")))
+      yn64 <- key.values.requireAs[Base64String](ECParam.Y)
       yn = yn64.decodeBigInt
-      crv <- key
-        .get[Curve](ECParam.Crv)
-        .flatMap(_.toRight(DecodeError("missing crv value")))
-
+      crv <- key.values.requireAs[Curve](ECParam.Crv)
       point = ECPoint(xn.underlying, yn.underlying)
       params <- wrapSecurityApi {
         val p = AlgorithmParameters.getInstance("EC")
@@ -54,13 +47,8 @@ private object EcKey:
 
   def createPrivateKey(key: JWK): Either[JwtError, PrivateKey] =
     for
-      s64 <- key
-        .get[Base64String](ECParam.D)
-        .flatMap(_.toRight(DecodeError("missing d value")))
-      crv <- key
-        .get[Curve](ECParam.Crv)
-        .flatMap(_.toRight(DecodeError("missing crv value")))
-
+      s64 <- key.values.requireAs[Base64String](ECParam.D)
+      crv <- key.values.requireAs[Curve](ECParam.Crv)
       params <- wrapSecurityApi {
         val p = AlgorithmParameters.getInstance("EC")
         p.init(new ECGenParameterSpec(crv.name))
@@ -108,7 +96,9 @@ private object EcKey:
         .withValue(ECParam.Crv, crv)
     yield jwk
 
-  private[jwt] def signAlgoName(alg: Algorithm): Either[JwtError, String] =
+  private[jwt] def signAlgoName(
+      alg: Algorithm
+  ): Either[JwtError.UnsupportedSignatureAlgorithm, String] =
     alg match
       case Algorithm.ES256 => Right("SHA256withECDSA")
       case Algorithm.ES384 => Right("SHA384withECDSA")

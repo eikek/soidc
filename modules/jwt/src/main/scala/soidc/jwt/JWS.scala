@@ -27,14 +27,14 @@ final case class JWS(
     ByteVector.encodeUtf8(header.value).fold(throw _, identity) ++
       ('.'.toByte +: ByteVector.encodeUtf8(claims.value).fold(throw _, identity))
 
-  def signWith(key: JWK): Either[JwtError, JWS] =
+  def signWith(key: JWK): Either[JwtError.SignError, JWS] =
     val sig = Sign.signWith(payload.toArray, key)
     sig.map(bv => withSignature(Base64String.encode(bv)))
 
   def unsafeSignWith(key: JWK): JWS =
     signWith(key).fold(throw _, identity)
 
-  def verify(key: JWK): Either[JwtError, Boolean] =
+  def verify(key: JWK): Either[JwtError.VerifyError, Boolean] =
     Verify.verifyJWS(this, key)
 
 object JWS:
@@ -52,7 +52,7 @@ object JWS:
   def signed[H, C](header: H, claims: C, key: JWK)(using
       JsonEncoder[H],
       JsonEncoder[C]
-  ): Either[JwtError, JWS] =
+  ): Either[JwtError.SignError, JWS] =
     val raw = unsigned(header, claims)
     val sig = Sign.signWith(raw.payload.toArray, key)
     sig.map(bv => raw.withSignature(Base64String.encode(bv)))

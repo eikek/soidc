@@ -13,11 +13,11 @@ class JoseHeaderTest extends FunSuite:
       header.toJsonValue,
       JsonValue.obj("typ" -> JsonValue.str("JWT"), "alg" -> JsonValue.str("HS256"))
     )
-    assertEquals(header.get[Algorithm](P.Alg), Right(Some(Algorithm.HS256)))
+    assertEquals(header.values.requireAs[Algorithm](P.Alg), Right(Algorithm.HS256))
 
   test("create header from obj"):
     val header = JoseHeader
       .fromObj(JsonValue.Obj(Map("alg" -> JsonValue.str("HS256"))))
       .fold(throw _, identity)
-    assertEquals(header.get[Algorithm](P.Alg), Right(Some(Algorithm.HS256)))
+    assertEquals(header.values.requireAs[Algorithm](P.Alg), Right(Algorithm.HS256))
     assertEquals(header, JoseHeader.empty.withAlgorithm(Algorithm.HS256))
