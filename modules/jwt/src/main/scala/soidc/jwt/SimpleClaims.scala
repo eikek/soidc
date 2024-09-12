@@ -38,3 +38,6 @@ object SimpleClaims:
 
   given FromJson[SimpleClaims] = FromJson.obj(fromObj)
   given ToJson[SimpleClaims] = ToJson.instance(_.values)
+
+  given StandardClaims[SimpleClaims] =
+    StandardClaims(_.notBefore, _.expirationTime, _.issuer)

@@ -1,6 +1,7 @@
 package soidc.jwt
 
 import scodec.bits.ByteVector
+import soidc.jwt.json.JsonDecoder
 import soidc.jwt.json.JsonEncoder
 
 /** A JSON Web Signature.
@@ -33,6 +34,13 @@ final case class JWS(
 
   def unsafeSignWith(key: JWK): JWS =
     signWith(key).fold(throw _, identity)
+
+  def decode[H: JsonDecoder, C: JsonDecoder]
+      : Either[JwtError.DecodeError, JWSDecoded[H, C]] =
+    for
+      h <- header.as[H]
+      c <- claims.as[C]
+    yield JWSDecoded(this, h, c)
 
   def verify(key: JWK): Either[JwtError.VerifyError, Boolean] =
     Verify.verifyJWS(this, key)

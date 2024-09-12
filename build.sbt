@@ -98,7 +98,7 @@ val core = project
     name := "soidc-core",
     description := "Core module",
     libraryDependencies ++=
-      Dependencies.catsCore
+      Dependencies.catsCore ++ Dependencies.catsEffect
   )
   .dependsOn(jwt)
 
@@ -112,7 +112,7 @@ val borer = project
     description := "Provides borer json codec",
     libraryDependencies ++= Dependencies.borer
   )
-  .dependsOn(core % "compile->compile,test->test")
+  .dependsOn(jwt % "compile->compile,test->test")
 
 val http4sClient = project
   .in(file("modules/http4s-client"))

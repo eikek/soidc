@@ -6,6 +6,7 @@ object Dependencies {
     val scala3 = "3.5.0"
     val borer = "1.14.1"
     val catsCore = "2.12.0"
+    val catsEffect = "3.5.4"
     val http4s = "0.23.27"
     val munit = "1.0.0"
     val munitCatsEffect = "2.0.0"
@@ -50,6 +51,10 @@ object Dependencies {
 
   val catsCore = Seq(
     "org.typelevel" %% "cats-core" % V.catsCore
+  )
+
+  val catsEffect = Seq(
+    "org.typelevel" %% "cats-effect" % V.catsEffect
   )
 
   val munit = Seq(

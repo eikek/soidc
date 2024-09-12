@@ -21,3 +21,5 @@ object Uri:
   extension (self: Uri)
     def value: String = self
     def isEmpty: Boolean = self.isEmpty()
+
+    def addPath(path: String): Uri = ???

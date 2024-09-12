@@ -7,6 +7,7 @@ final case class JWKSet(keys: List[JWK]):
     keys.find(_.keyId.exists(_ == id))
 
 object JWKSet:
+  val empty: JWKSet = JWKSet(Nil)
 
   def apply(k: JWK*): JWKSet = JWKSet(k.toList)
 
