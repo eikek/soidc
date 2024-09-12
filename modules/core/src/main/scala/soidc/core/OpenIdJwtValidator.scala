@@ -26,28 +26,23 @@ final class OpenIdJwtValidator[F[_], H, C](
 ) extends JwtValidator[F, H, C]:
 
   def validate(jws: JWSDecoded[H, C]): F[Result] =
+    create.validate(jws)
+
+  def create = JwtValidator.selectF[F, H, C] { jws =>
     StandardClaims[C]
       .issuer(jws.claims)
       .flatMap(s => Uri.fromString(s.value).toOption) match
-      case None => Result.notApplicable.pure[F]
+      case None => JwtValidator.notApplicable[F, H, C].pure[F]
       case Some(issuer) =>
         for
           jwks <- state.get.map(_.get(issuer))
-          result <- validateJWKSet(jwks.jwks, jws).flatMap {
-            case Result.Validated(false) =>
-              fetchJWKSetGuarded(issuer).flatMapF(validateJWKSet(_, jws)).value
-            case result => result.pure[F]
+          v1 = JwtValidator.validateWithJWKSet(jwks.jwks, clock).invalidToNone
+          v2 <- fetchJWKSetGuarded(issuer).value.map {
+            case Right(jwks) => JwtValidator.validateWithJWKSet(jwks, clock)
+            case Left(err)   => JwtValidator.failure(err)
           }
-        yield result
-
-  def validateJWKSet(jwks: JWKSet, jws: JWSDecoded[H, C]): F[Result] =
-    val key = StandardHeader[H].keyId(jws.header).flatMap(jwks.get)
-    val validator = key match
-      case None =>
-        JwtValidator.invalid[F, H, C]
-      case Some(jwk) =>
-        JwtValidator.validateWithKey[F, H, C](jwk, clock)
-    validator.validate(jws)
+        yield v1 orElse v2
+  }
 
   def fetchJWKSetGuarded(issuer: Uri): EitherT[F, SoidcError, JWKSet] =
     for
@@ -81,13 +76,16 @@ final class OpenIdJwtValidator[F[_], H, C](
     yield jwks
 
 object OpenIdJwtValidator:
-  /** Configuration settings for [[JwtVerify]]
+  /** Configuration settings for [[OpenIdJwtValidator]]
     *
     * @param minRequestDelay
     *   minimum delay between requests to fetch an JWKS
     * @param openIdConfigPath
-    *   the uri path part after the realm that denotes the endpoint to get the
+    *   the uri path part after the issuer url that denotes the endpoint to get the
     *   configuration data from
+    * @param timingLeeway
+    *   A short duration to extend timing validation (nbf and exp) to make up for clock
+    *   skew
     */
   final case class Config(
       minRequestDelay: FiniteDuration = 1.minute,

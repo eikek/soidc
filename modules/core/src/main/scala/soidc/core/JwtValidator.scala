@@ -3,6 +3,7 @@ package soidc.core
 import scala.concurrent.duration.FiniteDuration
 
 import cats.Applicative
+import cats.Functor
 import cats.MonadThrow
 import cats.data.Kleisli
 import cats.effect.*
@@ -22,6 +23,14 @@ trait JwtValidator[F[_], H, C]:
       validate(jws).flatMap {
         case Right(None) => next.validate(jws)
         case r           => r.pure[F]
+      }
+    )
+
+  def invalidToNone(using Functor[F]): JwtValidator[F, H, C] =
+    JwtValidator.instance(jws =>
+      validate(jws).map {
+        case Result.Validated(false) => Result.notApplicable
+        case r                       => r
       }
     )
 
@@ -73,14 +82,27 @@ object JwtValidator:
       def validate(jws: JWSDecoded[H, C]): F[Result] = f(jws)
     }
 
+  def select[F[_], H, C](
+      f: JWSDecoded[H, C] => JwtValidator[F, H, C]
+  ): JwtValidator[F, H, C] =
+    instance(jws => f(jws).validate(jws))
+
+  def selectF[F[_], H, C](
+      f: JWSDecoded[H, C] => F[JwtValidator[F, H, C]]
+  )(using Monad[F]): JwtValidator[F, H, C] =
+    instance(jws => f(jws).flatMap(_.validate(jws)))
+
   def invalid[F[_]: Applicative, H, C]: JwtValidator[F, H, C] =
-    instance(_ => Right(Some(false)).pure[F])
+    instance(_ => Result.pure(Some(false)).pure[F])
 
   def alwaysValid[F[_]: Applicative, H, C]: JwtValidator[F, H, C] =
-    instance(_ => Right(Some(true)).pure[F])
+    instance(_ => Result.pure(Some(true)).pure[F])
 
   def notApplicable[F[_]: Applicative, H, C]: JwtValidator[F, H, C] =
-    instance(_ => Right(None).pure[F])
+    instance(_ => Result.notApplicable.pure[F])
+
+  def failure[F[_]: Applicative, H, C](err: SoidcError): JwtValidator[F, H, C] =
+    instance(_ => Result.failure(err).pure[F])
 
   def validateTimingOnly[F[_], H, C](clock: Clock[F], timingLeeway: FiniteDuration)(using
       StandardClaims[C],
@@ -104,6 +126,19 @@ object JwtValidator:
         case Left(_)                            => Some(false).asRight
       }
     )
+
+  def validateWithJWKSet[F[_], H, C](
+      jwks: JWKSet,
+      clock: Clock[F]
+  )(using StandardHeader[H], StandardClaims[C], Monad[F]): JwtValidator[F, H, C] =
+    select { jws =>
+      val key = StandardHeader[H].keyId(jws.header).flatMap(jwks.get)
+      key match
+        case None =>
+          JwtValidator.invalid[F, H, C]
+        case Some(jwk) =>
+          JwtValidator.validateWithKey[F, H, C](jwk, clock)
+    }
 
   def openId[F[_], H, C](config: OpenIdJwtValidator.Config, client: HttpClient[F])(using
       StandardClaims[C],
