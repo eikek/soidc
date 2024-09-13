@@ -42,7 +42,7 @@ final case class JWS(
       c <- claims.as[C]
     yield JWSDecoded(this, h, c)
 
-  def verify(key: JWK): Either[JwtError.VerifyError, Boolean] =
+  def verifySignature(key: JWK): Either[JwtError.VerifyError, Boolean] =
     Verify.verifyJWS(this, key)
 
 object JWS:

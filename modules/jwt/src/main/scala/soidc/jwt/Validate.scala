@@ -6,9 +6,70 @@ import scala.concurrent.duration.Duration
 
 object Validate:
 
+  enum FailureReason:
+    case Expired(exp: Instant)
+    case Inactive(nbf: Instant)
+    case SignatureVerifyError(cause: JwtError.VerifyError)
+    case SignatureInvalid
+    case KeyNotFound
+    case GenericReason(msg: String, cause: Option[Throwable] = None)
+
+  opaque type Result = Set[FailureReason]
+  object Result {
+    def failed(f: FailureReason, fn: FailureReason*): Result =
+      fn.toSet + f
+
+    def success: Result = Set.empty
+
+    def cond(test: Boolean, f: => FailureReason, fn: => FailureReason*): Result =
+      if (test) Result.success
+      else fn.toSet + f
+
+    object Success {
+      def unapply(r: Result): Option[Unit] =
+        if (r.isEmpty) Some(()) else None
+    }
+    object Failure {
+      def unapply(r: Result): Option[Set[FailureReason]] =
+        if (r.isEmpty) None else Some(r)
+    }
+
+    extension (self: Result)
+      def isFailure = self.nonEmpty
+      def isSuccess = self.isEmpty
+      def combine(other: Result): Result =
+        self ++ other
+
+      private def exp = self
+      export exp.toList
+
+      infix def +(other: Result): Result = combine(other)
+  }
+
   def validateTime[C](
       leeway: Duration
-  )(c: C, currentTime: Instant)(using claims: StandardClaims[C]): Boolean =
+  )(c: C, currentTime: Instant)(using claims: StandardClaims[C]): Result =
     val min = claims.notBefore(c).map(_.asInstant.minusMillis(leeway.toMillis))
     val max = claims.expirationTime(c).map(_.asInstant.plusMillis(leeway.toMillis))
-    min.forall(_.isBefore(currentTime)) && max.forall(_.isAfter(currentTime))
+    val v1 = min.map { nbf =>
+      Result.cond(currentTime.isAfter(nbf), FailureReason.Inactive(nbf))
+    }
+    val v2 = max.map { exp =>
+      Result.cond(currentTime.isBefore(exp), FailureReason.Expired(exp))
+    }
+    v1.getOrElse(Result.success) ++ v2.getOrElse(Result.success)
+
+  def validateSignature(key: JWK, jws: JWS): Result =
+    jws.verifySignature(key) match
+      case Right(result) => Result.cond(result, FailureReason.SignatureInvalid)
+      case Left(err)     => Result.failed(FailureReason.SignatureVerifyError(err))
+
+  def validateSignature[H, C](keySet: JWKSet, jws: JWSDecoded[H, C])(using
+      StandardHeader[H]
+  ): Result =
+    val key = StandardHeader[H].keyId(jws.header).flatMap(keySet.get)
+    key match
+      case None =>
+        Result.failed(FailureReason.KeyNotFound)
+      case Some(jwk) =>
+        validateSignature(jwk, jws.jws)

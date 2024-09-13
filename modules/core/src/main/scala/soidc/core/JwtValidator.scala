@@ -3,7 +3,6 @@ package soidc.core
 import scala.concurrent.duration.FiniteDuration
 
 import cats.Applicative
-import cats.Functor
 import cats.MonadThrow
 import cats.data.Kleisli
 import cats.effect.*
@@ -14,31 +13,62 @@ import soidc.core.JwtValidator.Result
 import soidc.jwt.*
 import soidc.jwt.json.JsonDecoder
 
+/** Validate JWT token. */
 trait JwtValidator[F[_], H, C]:
 
   def validate(jws: JWSDecoded[H, C]): F[Result]
 
-  infix def orElse(next: JwtValidator[F, H, C])(using Monad[F]): JwtValidator[F, H, C] =
+  /** Run this validator and then `next` and combine their results. */
+  infix def ++(next: JwtValidator[F, H, C])(using Monad[F]): JwtValidator[F, H, C] =
+    import Result.*
     JwtValidator.instance(jws =>
+      validate(jws).flatMap(r1 => next.validate(jws).map(r2 => r1 + r2))
+    )
+
+  /** Run this validator and then the result of `next` and combine their results. */
+  def andThen(next: Result => JwtValidator[F, H, C])(using
+      Monad[F]
+  ): JwtValidator[F, H, C] =
+    import Result.*
+    JwtValidator.instance(jws =>
+      validate(jws).flatMap(r1 => next(r1).validate(jws).map(r2 => r1 + r2))
+    )
+
+  /** If this validator returns a "not applicable" result, the `next` validator is tried.
+    */
+  infix def orElse(
+      next: JwtValidator[F, H, C]
+  )(using Monad[F]): JwtValidator[F, H, C] =
+    JwtValidator.instance { jws =>
       validate(jws).flatMap {
-        case Right(None) => next.validate(jws)
-        case r           => r.pure[F]
+        case Result.NotApplicable(_) => next.validate(jws)
+        case r                       => r.pure[F]
       }
-    )
+    }
 
-  def invalidToNone(using Functor[F]): JwtValidator[F, H, C] =
-    JwtValidator.instance(jws =>
+  /** Converts an invalid result to a not-applicable result. */
+  def invalidToNotApplicable(using Monad[F]): JwtValidator[F, H, C] =
+    JwtValidator.instance { jws =>
       validate(jws).map {
-        case Result.Validated(false) => Result.notApplicable
-        case r                       => r
+        case Result.Validated(Validate.Result.Failure(_)) =>
+          Result.notApplicable
+        case r => r
       }
-    )
+    }
 
+  /** Return a not-applicable result if the result of `enable` is false. Otherwise run
+    * this validator.
+    */
   def scoped(enable: JWSDecoded[H, C] => Boolean)(using
       Applicative[F]
   ): JwtValidator[F, H, C] =
-    JwtValidator.instance(jws => if (enable(jws)) validate(jws) else Right(None).pure[F])
+    JwtValidator.instance(jws =>
+      if (enable(jws)) validate(jws) else Result.notApplicable.pure[F]
+    )
 
+  /** Scopes this validator to only apply if an issuer exists in the claim and it matches
+    * the given function.
+    */
   def forIssuer(f: String => Boolean)(using
       sc: StandardClaims[C],
       F: Applicative[F]
@@ -46,28 +76,34 @@ trait JwtValidator[F[_], H, C]:
     scoped(jws => sc.issuer(jws.claims).map(_.value).exists(f))
 
 object JwtValidator:
-  type Result = Either[SoidcError, Option[Boolean]]
+  type Result = Option[Validate.Result]
 
   object Result {
-    def pure(valid: Option[Boolean]): Result = Right(valid)
-    def notApplicable: Result = Right(None)
-    def failure(err: SoidcError): Result = Left(err)
+    def pure(valid: Validate.Result): Result = Some(valid)
+    def notApplicable: Result = None
+    def success: Result = pure(Validate.Result.success)
+    def failed(reason: Validate.FailureReason): Result = pure(
+      Validate.Result.failed(reason)
+    )
 
-    object Failure {
-      def unapply(r: Result): Option[SoidcError] =
-        r.left.toOption
-    }
     object NotApplicable {
       def unapply(r: Result): Option[Unit] =
-        r.toOption.flatMap {
+        r match {
           case None => Some(())
           case _    => None
         }
     }
     object Validated {
-      def unapply(r: Result): Option[Boolean] =
-        r.toOption.flatten
+      def unapply(r: Result): Option[Validate.Result] =
+        r
     }
+
+    extension (self: Result)
+      def +(next: Result): Result =
+        (self, next) match
+          case (Some(a), Some(b)) => Some(a + b)
+          case (None, b)          => b
+          case (a, None)          => a
   }
 
   def kleisli[F[_], H, C](
@@ -92,17 +128,19 @@ object JwtValidator:
   )(using Monad[F]): JwtValidator[F, H, C] =
     instance(jws => f(jws).flatMap(_.validate(jws)))
 
-  def invalid[F[_]: Applicative, H, C]: JwtValidator[F, H, C] =
-    instance(_ => Result.pure(Some(false)).pure[F])
+  def pure[F[_]: Applicative, H, C](result: Result): JwtValidator[F, H, C] =
+    instance(_ => result.pure[F])
+
+  def invalid[F[_]: Applicative, H, C](
+      reason: Validate.FailureReason = Validate.FailureReason.GenericReason("JWT invalid")
+  ): JwtValidator[F, H, C] =
+    pure(Result.failed(reason))
 
   def alwaysValid[F[_]: Applicative, H, C]: JwtValidator[F, H, C] =
-    instance(_ => Result.pure(Some(true)).pure[F])
+    pure(Result.success)
 
   def notApplicable[F[_]: Applicative, H, C]: JwtValidator[F, H, C] =
-    instance(_ => Result.notApplicable.pure[F])
-
-  def failure[F[_]: Applicative, H, C](err: SoidcError): JwtValidator[F, H, C] =
-    instance(_ => Result.failure(err).pure[F])
+    pure(Result.notApplicable)
 
   def validateTimingOnly[F[_], H, C](clock: Clock[F], timingLeeway: FiniteDuration)(using
       StandardClaims[C],
@@ -110,35 +148,28 @@ object JwtValidator:
   ): JwtValidator[F, H, C] =
     instance(jws =>
       clock.realTimeInstant.map(
-        jws.validateWithoutSignature(_, timingLeeway).some.asRight
+        jws.validateWithoutSignature(_, timingLeeway).some
       )
     )
 
-  def validateWithKey[F[_], H, C](jwk: JWK, clock: Clock[F])(using
+  def validateWithKey[F[_], H, C](
+      jwk: JWK,
+      clock: Clock[F],
+      timingLeeway: FiniteDuration
+  )(using
       StandardClaims[C],
       Monad[F]
   ): JwtValidator[F, H, C] =
-    instance(jws =>
-      clock.realTimeInstant.map(jws.validate(jwk, _)).map {
-        case Right(r)                           => Some(r).asRight
-        case Left(_: JwtError.SignatureMissing) => None.asRight
-        case Left(_: JwtError.AlgorithmMissing) => None.asRight
-        case Left(_)                            => Some(false).asRight
-      }
-    )
+    instance(jws => clock.realTimeInstant.map(jws.validate(jwk, _, timingLeeway).some))
 
   def validateWithJWKSet[F[_], H, C](
       jwks: JWKSet,
-      clock: Clock[F]
+      clock: Clock[F],
+      timingLeeway: FiniteDuration
   )(using StandardHeader[H], StandardClaims[C], Monad[F]): JwtValidator[F, H, C] =
-    select { jws =>
-      val key = StandardHeader[H].keyId(jws.header).flatMap(jwks.get)
-      key match
-        case None =>
-          JwtValidator.invalid[F, H, C]
-        case Some(jwk) =>
-          JwtValidator.validateWithKey[F, H, C](jwk, clock)
-    }
+    validateTimingOnly(clock, timingLeeway) ++ instance(jws =>
+      Result.pure(Validate.validateSignature(jwks, jws)).pure[F]
+    )
 
   def openId[F[_], H, C](config: OpenIdJwtValidator.Config, client: HttpClient[F])(using
       StandardClaims[C],
@@ -154,4 +185,4 @@ object JwtValidator:
       .map(OpenIdJwtValidator[F, H, C](config, client, _, Clock[F]))
 
   given [F[_]: Monad, H, C]: Monoid[JwtValidator[F, H, C]] =
-    Monoid.instance(notApplicable[F, H, C], _ orElse _)
+    Monoid.instance(notApplicable[F, H, C], _ ++ _)

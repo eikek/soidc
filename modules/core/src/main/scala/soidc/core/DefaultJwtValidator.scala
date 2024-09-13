@@ -18,6 +18,7 @@ object DefaultJwtValidator:
   ):
     def isIssuerAllowed(issuer: String): Boolean =
       allowedIssuerUrls.exists(p => p.matches(issuer))
+    def enableSignatureValidation: Boolean = !disableSignatureValidation
 
   def apply[F[_], H, C](config: Config, client: HttpClient[F])(using
       StandardClaims[C],
@@ -33,9 +34,12 @@ object DefaultJwtValidator:
       .validateTimingOnly[F, H, C](clock, config.openIdConfig.timingLeeway)
       .scoped(_ => config.disableSignatureValidation)
 
-    JwtValidator.openId(config.openIdConfig, client).map { v2 =>
-      (v1 |+| v2).forIssuer(config.isIssuerAllowed)
-    }
+    JwtValidator
+      .openId(config.openIdConfig, client)
+      .map(_.scoped(_ => config.enableSignatureValidation))
+      .map { v2 =>
+        v1.orElse(v2).forIssuer(config.isIssuerAllowed)
+      }
 
   def default[F[_]](config: Config, client: HttpClient[F])(using
       MonadThrow[F],

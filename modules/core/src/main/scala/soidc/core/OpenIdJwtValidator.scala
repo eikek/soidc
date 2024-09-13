@@ -36,15 +36,16 @@ final class OpenIdJwtValidator[F[_], H, C](
       case Some(issuer) =>
         for
           jwks <- state.get.map(_.get(issuer))
-          v1 = JwtValidator.validateWithJWKSet(jwks.jwks, clock).invalidToNone
-          v2 <- fetchJWKSetGuarded(issuer).value.map {
-            case Right(jwks) => JwtValidator.validateWithJWKSet(jwks, clock)
-            case Left(err)   => JwtValidator.failure(err)
+          v1 = JwtValidator
+            .validateWithJWKSet(jwks.jwks, clock, config.timingLeeway)
+            .invalidToNotApplicable
+          v2 <- fetchJWKSetGuarded(issuer).map { jwks =>
+            JwtValidator.validateWithJWKSet(jwks, clock, config.timingLeeway)
           }
-        yield v1 orElse v2
+        yield v1.orElse(v2)
   }
 
-  def fetchJWKSetGuarded(issuer: Uri): EitherT[F, SoidcError, JWKSet] =
+  def fetchJWKSetGuarded(issuer: Uri): F[JWKSet] =
     for
       _ <- checkLastUpdateDelay(issuer, config.minRequestDelay)
       result <- fetchJWKSet(issuer)
@@ -53,26 +54,26 @@ final class OpenIdJwtValidator[F[_], H, C](
   def checkLastUpdateDelay(
       issuer: Uri,
       min: FiniteDuration
-  ): EitherT[F, SoidcError, Unit] =
-    EitherT(
-      clock.monotonic.flatMap(ct => state.modify(_.setLastUpdateDelay(issuer, ct))).map {
-        case delay if delay > min => Right(())
-        case _                    => Left(SoidcError.TooManyValidationRequests(min))
+  ): F[Unit] =
+    clock.monotonic
+      .flatMap(ct => state.modify(_.setLastUpdateDelay(issuer, ct)))
+      .flatMap {
+        case delay if delay > min => ().pure[F]
+        case _ => MonadThrow[F].raiseError(SoidcError.TooManyValidationRequests(min))
       }
-    )
 
-  def fetchJWKSet(issuerUri: Uri): EitherT[F, SoidcError, JWKSet] =
+  def fetchJWKSet(issuerUri: Uri): F[JWKSet] =
     for
-      _ <- EitherT.right(
-        clock.monotonic.flatMap(t => state.update(_.setLastUpdate(issuerUri, t)))
-      )
+      _ <- clock.monotonic.flatMap(t => state.update(_.setLastUpdate(issuerUri, t)))
       configUri = issuerUri.addPath(config.openIdConfigPath)
       openIdCfg <- EitherT(client.get[OpenIdConfig](configUri).attempt)
         .leftMap(ex => SoidcError.OpenIdConfigError(configUri, ex))
+        .rethrowT
+
       jwks <- EitherT(client.get[JWKSet](openIdCfg.jwksUri).attempt)
         .leftMap(ex => SoidcError.JwksError(openIdCfg.jwksUri, ex))
-
-      _ <- EitherT.right(state.update(_.setJwks(issuerUri, jwks)))
+        .rethrowT
+      _ <- state.update(_.setJwks(issuerUri, jwks))
     yield jwks
 
 object OpenIdJwtValidator:

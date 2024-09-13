@@ -9,18 +9,21 @@ final case class JWSDecoded[H, C](
     header: H,
     claims: C
 ):
-  export jws.{compact, payload, verify}
+  export jws.{compact, payload, verifySignature}
 
   def validate(key: JWK, currentTime: Instant, timingLeeway: Duration = Duration.Zero)(
       using StandardClaims[C]
-  ) =
-    verify(key).map(_ && Validate.validateTime(timingLeeway)(claims, currentTime))
+  ): Validate.Result =
+    Validate.validateSignature(key, jws) + Validate.validateTime(timingLeeway)(
+      claims,
+      currentTime
+    )
 
   def validateWithoutSignature(
       currentTime: Instant,
       timingLeeway: Duration = Duration.Zero
   )(using
       StandardClaims[C]
-  ) = Validate.validateTime(timingLeeway)(claims, currentTime)
+  ): Validate.Result = Validate.validateTime(timingLeeway)(claims, currentTime)
 
 type DefaultJWS = JWSDecoded[JoseHeader, SimpleClaims]

@@ -51,11 +51,13 @@ object JwtError:
       extends RuntimeException("No signature in JWS")
       with NoStackTrace
       with VerifyError
+
   final case class AlgorithmMissing(jwk: JWK)
       extends RuntimeException("No algorithm in JWK")
       with NoStackTrace
       with VerifyError
       with SignError
+
   final case class UnsupportedSignatureAlgorithm(alg: Algorithm)
       extends RuntimeException(
         s"Unsupported algorithm for creating a signature: $alg"
@@ -63,10 +65,12 @@ object JwtError:
       with VerifyError
       with SignError
       with NoStackTrace
+
   final case class InvalidPublicKey(cause: JwtError, jwk: JWK)
       extends RuntimeException("Invalid public key")
       with VerifyError
       with NoStackTrace
+
   final case class InvalidPrivateKey(cause: JwtError, jwk: JWK)
       extends RuntimeException("Invalid private key")
       with SignError

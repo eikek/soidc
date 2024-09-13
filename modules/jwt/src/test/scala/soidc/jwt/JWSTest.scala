@@ -81,7 +81,7 @@ class JWSTest extends FunSuite with Syntax:
     )
     assert(
       jws
-        .verify(data.symmetricKey)
+        .verifySignature(data.symmetricKey)
         .value
     )
 
@@ -89,7 +89,7 @@ class JWSTest extends FunSuite with Syntax:
     val data = Rfc7515.Appendix2
     val jws = JWS(data.header64, data.claim64).unsafeSignWith(data.rsaKey)
     assertEquals(jws.signature, Some(data.signature))
-    assert(jws.verify(data.rsaKey).value)
+    assert(jws.verifySignature(data.rsaKey).value)
 
   test("JWS with EC signature ES256"):
     val data = Rfc7515.Appendix3
@@ -110,7 +110,7 @@ class JWSTest extends FunSuite with Syntax:
         JwtAlgorithm.ES256
       )
     )
-    assert(jws.verify(data.ecKey).value)
+    assert(jws.verifySignature(data.ecKey).value)
 
   test("JWS with EC signature ES512"):
     val data = Rfc7515.Appendix4
@@ -131,7 +131,7 @@ class JWSTest extends FunSuite with Syntax:
         JwtAlgorithm.ES512
       )
     )
-    assert(jws.verify(data.ecKey).value)
+    assert(jws.verifySignature(data.ecKey).value)
 
   test("imported rsa key"):
     val jwk = JWK.rsaPrivate(KeyData.rsaPem, Algorithm.RS256).value
@@ -141,7 +141,7 @@ class JWSTest extends FunSuite with Syntax:
       // {"iss":"me myself"}
       Base64String.unsafeOf("eyJpc3MiOiJtZSBteXNlbGYifQ")
     ).signWith(jwk).value
-    assert(jws.verify(jwk).value)
+    assert(jws.verifySignature(jwk).value)
 
   test("imported ec key"):
     val jwk = JWK.ecPrivate(KeyData.ecPrivate, KeyData.ecPublic, Algorithm.ES256).value
@@ -151,4 +151,4 @@ class JWSTest extends FunSuite with Syntax:
       // {"iss":"me myself"}
       Base64String.unsafeOf("eyJpc3MiOiJtZSBteXNlbGYifQ")
     ).signWith(jwk).value
-    assert(jws.verify(jwk).value)
+    assert(jws.verifySignature(jwk).value)
