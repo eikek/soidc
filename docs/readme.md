@@ -81,7 +81,8 @@ signedJws.verifySignature(jwk)
 While signature verification can be done without knowing the payload,
 validation requires to read the claims. When the `exp` (expiration
 time) or `nbf` (not before) claims are present, they are used to
-validate these against a given (current) time.
+validate these against a given (current) time. This example uses the
+`soidc-borer` module to parse the JSON payloads of the given JWT.
 
 ```scala mdoc:reset
 import soidc.jwt.*
@@ -99,7 +100,7 @@ val currentTime = java.time.Instant.ofEpochSecond(1600000500)
 jwt.validate(jwk, currentTime).isValid
 
 val tooLate = java.time.Instant.ofEpochSecond(1603000500)
-jwt.validate(jwk, tooLate)
+jwt.validate(jwk, tooLate).isValid
 ```
 
 ### http4s-routes
