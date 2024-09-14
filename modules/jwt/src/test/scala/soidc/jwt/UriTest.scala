@@ -5,11 +5,16 @@ import munit.FunSuite
 class UriTest extends FunSuite:
 
   test("addPath normalizes slashes"):
-    val uris = List(Uri.unsafeFromString("http://test.com/"), Uri.unsafeFromString("http://test.com"))
+    val uris = List(
+      Uri.unsafeFromString("http://test.com/"),
+      Uri.unsafeFromString("http://test.com")
+    )
     val paths = List("a/b", "/a/b")
-    for (u <- uris; p <- paths) {
-      assertEquals(u.addPath(p), Uri.unsafeFromString("http://test.com/a/b"))
+    for {
+      u <- uris
+      p <- paths
     }
+      assertEquals(u.addPath(p), Uri.unsafeFromString("http://test.com/a/b"))
 
   test("fail on invaid"):
     val uris = List("", "___", "  ", "caffee", "////", "1m://test")

@@ -45,6 +45,7 @@ object FromJson:
       case v                 => Left(DecodeError(s"Not a boolean: $v"))
     }
 
+  given FromJson[JsonValue] = instance(Right(_))
   given FromJson[String] = str(Right(_))
   given FromJson[BigDecimal] = num(Right(_))
   given FromJson[Boolean] = bool(Right(_))

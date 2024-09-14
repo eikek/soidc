@@ -10,8 +10,11 @@ import soidc.jwt.json.JsonDecoder
 class JWSTest extends FunSuite with Syntax:
 
   test("split token"):
-    val token =
-      "eyJ0eXAiOiJKV1QiLA0KICJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJqb2UiLA0KICJleHAiOjEzMDA4MTkzODAsDQogImh0dHA6Ly9leGFtcGxlLmNvbS9pc19yb290Ijp0cnVlfQ.dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+    val token = List(
+      "eyJ0eXAiOiJKV1QiLA0KICJhbGciOiJIUzI1NiJ9",
+      "eyJpc3MiOiJqb2UiLA0KICJleHAiOjEzMDA4MTkzODAsDQogImh0dHA6Ly9leGFtcGxlLmNvbS9pc19yb290Ijp0cnVlfQ",
+      "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+    ).mkString(".")
     val parts = JWS.unsafeFromString(token)
     assertEquals(parts.header.decodedUtf8.noWhitespace, """{"typ":"JWT","alg":"HS256"}""")
     assertEquals(
@@ -61,8 +64,10 @@ class JWSTest extends FunSuite with Syntax:
         DecodeError("wrong")
       )
     )
-    val token =
-      "eyJ0eXAiOiJKV1QiLA0KICJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJqb2UiLA0KICJleHAiOjEzMDA4MTkzODAsDQogImh0dHA6Ly9leGFtcGxlLmNvbS9pc19yb290Ijp0cnVlfQ"
+    val token = List(
+      "eyJ0eXAiOiJKV1QiLA0KICJhbGciOiJIUzI1NiJ9",
+      "eyJpc3MiOiJqb2UiLA0KICJleHAiOjEzMDA4MTkzODAsDQogImh0dHA6Ly9leGFtcGxlLmNvbS9pc19yb290Ijp0cnVlfQ"
+    ).mkString(".")
     val parts = JWS.unsafeFromString(token)
     val result = parts.header.as[JoseHeader].value
     assertEquals(result, header)

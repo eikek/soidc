@@ -37,8 +37,8 @@ object Validate:
     }
 
     extension (self: Result)
-      def isFailure = self.nonEmpty
-      def isSuccess = self.isEmpty
+      def isInvalid = self.nonEmpty
+      def isValid = self.isEmpty
       def combine(other: Result): Result =
         self ++ other
 

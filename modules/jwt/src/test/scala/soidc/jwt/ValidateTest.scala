@@ -1,10 +1,12 @@
 package soidc.jwt
 
-import munit.FunSuite
-import scala.concurrent.duration.Duration
 import java.time.Instant
-import Validate.*
+
+import scala.concurrent.duration.Duration
+
+import munit.FunSuite
 import scodec.bits.*
+import soidc.jwt.Validate.*
 
 class ValidateTest extends FunSuite:
 

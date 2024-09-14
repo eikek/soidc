@@ -4,7 +4,7 @@ import soidc.jwt.JwtError.DecodeError
 import soidc.jwt.RegisteredParameterName as P
 import soidc.jwt.json.{FromJson, JsonValue, ToJson}
 
-final case class SimpleClaims(
+final case class SimpleClaims private (
     issuer: Option[StringOrUri],
     subject: Option[StringOrUri],
     audience: List[StringOrUri],
@@ -16,14 +16,14 @@ final case class SimpleClaims(
   def withIssuer(iss: StringOrUri): SimpleClaims =
     copy(issuer = Some(iss), values = values.replace(P.Iss, iss))
 
-  def withExpirationTime(exp: NumericDate): SimpleClaims =
-    copy(expirationTime = Some(exp), values = values.replace(P.Exp, exp))
-
   def withSubject(sub: StringOrUri): SimpleClaims =
     copy(subject = Some(sub), values = values.replace(P.Sub, sub))
 
   def withAudience(aud: StringOrUri): SimpleClaims =
     copy(audience = List(aud), values = values.replace(P.Aud, aud))
+
+  def withExpirationTime(exp: NumericDate): SimpleClaims =
+    copy(expirationTime = Some(exp), values = values.replace(P.Exp, exp))
 
   def withNotBefore(nbf: NumericDate): SimpleClaims =
     copy(notBefore = Some(nbf), values = values.replace(P.Nbf, nbf))
@@ -33,6 +33,17 @@ final case class SimpleClaims(
 
   def withValue[V: ToJson](name: ParameterName, value: V): SimpleClaims =
     copy(values = values.replace(name, value))
+
+  def remove(name: ParameterName): SimpleClaims =
+    val nv = values.remove(name)
+    name.key match
+      case P.Iss.key => copy(issuer = None, values = nv)
+      case P.Sub.key => copy(subject = None, values = nv)
+      case P.Aud.key => copy(audience = Nil, values = nv)
+      case P.Exp.key => copy(expirationTime = None, values = nv)
+      case P.Nbf.key => copy(notBefore = None, values = nv)
+      case P.Jti.key => copy(jwtId = None, values = nv)
+      case _         => copy(values = nv)
 
 object SimpleClaims:
   val empty: SimpleClaims =

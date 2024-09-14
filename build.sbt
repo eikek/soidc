@@ -1,7 +1,7 @@
 import Dependencies.V
 import com.github.sbt.git.SbtGit.GitKeys._
 
-addCommandAlias("ci", "Test/compile; lint; test; publishLocal")
+addCommandAlias("ci", "Test/compile; lint; test; readme/updateReadme; publishLocal")
 addCommandAlias(
   "lint",
   "scalafmtSbtCheck; scalafmtCheckAll; Compile/scalafix --check; Test/scalafix --check"
@@ -153,6 +153,16 @@ lazy val readme = project
     name := "soidc-readme",
     mdocIn := (LocalRootProject / baseDirectory).value / "docs" / "readme.md",
     mdocOut := (LocalRootProject / baseDirectory).value / "README.md",
+    scalacOptions :=
+      Seq(
+        "-feature",
+        "-deprecation",
+        "-unchecked",
+        "-encoding",
+        "UTF-8",
+        "-language:higherKinds",
+        "-Xkind-projector:underscores"
+      ),
     fork := true,
     updateReadme := {
       mdoc.evaluated
