@@ -79,6 +79,7 @@ val buildInfoSettings = Seq(
 
 val jwt = project
   .in(file("modules/jwt"))
+  .disablePlugins(RevolverPlugin)
   .settings(sharedSettings)
   .settings(testSettings)
   .settings(scalafixSettings)
@@ -91,6 +92,7 @@ val jwt = project
 
 val borer = project
   .in(file("modules/borer"))
+  .disablePlugins(RevolverPlugin)
   .settings(sharedSettings)
   .settings(testSettings)
   .settings(scalafixSettings)
@@ -103,6 +105,7 @@ val borer = project
 
 val core = project
   .in(file("modules/core"))
+  .disablePlugins(RevolverPlugin)
   .settings(sharedSettings)
   .settings(testSettings)
   .settings(scalafixSettings)
@@ -138,9 +141,11 @@ val http4sRoutes = project
     name := "soidc-http4s-routes",
     description := "Http4s routes for code flow",
     libraryDependencies ++=
-      Dependencies.http4sCore ++ Dependencies.http4sDsl
+      Dependencies.http4sCore ++ Dependencies.http4sServer,
+    libraryDependencies ++=
+      (Dependencies.http4sDsl ++ Dependencies.http4sEmberServer).map(_ % Test)
   )
-  .dependsOn(core % "compile->compile,test->test")
+  .dependsOn(core % "compile->compile,test->test", borer % "test->test")
 
 val updateReadme = inputKey[Unit]("Update readme")
 lazy val readme = project
@@ -151,6 +156,7 @@ lazy val readme = project
   .settings(noPublish)
   .settings(
     name := "soidc-readme",
+    libraryDependencies ++= Dependencies.http4sDsl,
     mdocIn := (LocalRootProject / baseDirectory).value / "docs" / "readme.md",
     mdocOut := (LocalRootProject / baseDirectory).value / "README.md",
     scalacOptions :=

@@ -331,7 +331,7 @@ val client = HttpClient.fromMap[IO](
     ).toJsonValue
   )
 )
-// client: HttpClient[[A >: Nothing <: Any] =>> IO[A]] = soidc.core.HttpClient$$anon$1@474642c7
+// client: HttpClient[[A >: Nothing <: Any] =>> IO[A]] = soidc.core.HttpClient$$anon$1@c825f5b
 
 // create validator with default config that looks up an openid-configuration
 // by appending '.well-known/openid-configuration' to the issuer url of the jwt
@@ -345,7 +345,7 @@ val validator = JwtValidator
   .openId[IO, JoseHeader, SimpleClaims](cfg, client)
   .map(_.forIssuer(_.startsWith("http://issuer"))) // restrict this to the a known issuer
   .unsafeRunSync()
-// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.JwtValidator$$anon$1@4a5d7fe6
+// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.JwtValidator$$anon$1@3160a713
 
 validator.validate(jws).unsafeRunSync() == Some(Validate.Result.success)
 // res9: Boolean = true
@@ -391,6 +391,83 @@ validator.validate(otherJws).unsafeRunSync() == None
 This module provides routes for doing an OpenID code flow and a
 middleware for verifying JWT tokens.
 
+```scala
+import cats.effect.*
+import cats.effect.unsafe.implicits.*
+
+import org.http4s.*
+import org.http4s.implicits.*
+import org.http4s.dsl.io.*
+import org.http4s.headers.Authorization
+import org.http4s.server.AuthMiddleware
+
+import soidc.borer.given
+import soidc.core.JwtValidator
+import soidc.http4s.routes.JwtAuth
+import soidc.http4s.routes.JwtContext.*
+import soidc.jwt.*
+
+
+type Context = Authenticated[JoseHeader, SimpleClaims]
+
+val testRoutes = AuthedRoutes.of[Context, IO] {
+  case ContextRequest(context, GET -> Root / "test") =>
+    Ok(context.token.claims.subject.map(_.value).getOrElse(""))
+}
+// testRoutes: Kleisli[[_$10 >: Nothing <: Any] =>> OptionT[[A >: Nothing <: Any] =>> IO[A], _$10], ContextRequest[[A >: Nothing <: Any] =>> IO[A], Context], Response[[A >: Nothing <: Any] =>> IO[A]]] = Kleisli(
+//   run = org.http4s.AuthedRoutes$$$Lambda$3568/0x0000000801a80278@759585db
+// )
+
+val validator = JwtValidator.alwaysValid[IO, JoseHeader, SimpleClaims]
+// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.JwtValidator$$anon$1@5dca796c
+val withAuth = AuthMiddleware(
+  JwtAuth.builder[IO, JoseHeader, SimpleClaims] // capture types here
+    .withBearerToken  // get the token from "Authorization Bearer …"
+    .withValidator(validator) // use this validator
+    .withOnInvalidToken(IO.println) // print to stdout in case of error
+    .secured  // valid token must exist and, use .optional to allow non-authenticated requests
+)
+// withAuth: Function1[Kleisli[[_$5 >: Nothing <: Any] =>> OptionT[[A >: Nothing <: Any] =>> IO[A], _$5], ContextRequest[[A >: Nothing <: Any] =>> IO[A], Authenticated[JoseHeader, SimpleClaims]], Response[[A >: Nothing <: Any] =>> IO[A]]], Kleisli[[_$5 >: Nothing <: Any] =>> OptionT[[A >: Nothing <: Any] =>> IO[A], _$5], Request[[A >: Nothing <: Any] =>> IO[A]], Response[[A >: Nothing <: Any] =>> IO[A]]]] = org.http4s.server.package$AuthMiddleware$$$Lambda$3576/0x0000000801a848b0@525915fb
+val httpApp = withAuth(testRoutes).orNotFound
+// httpApp: Kleisli[[A >: Nothing <: Any] =>> IO[A], Request[[A >: Nothing <: Any] =>> IO[A]], Response[[A >: Nothing <: Any] =>> IO[A]]] = Kleisli(
+//   run = org.http4s.syntax.KleisliResponseOps$$Lambda$3578/0x0000000801a85f00@19b44a4f
+// )
+
+// create sample request
+val jws =
+  JWS(Base64String.encodeString("{}"), Base64String.encodeString("""{"sub":"me"}"""))
+// jws: JWS = JWS(
+//   header = "e30",
+//   claims = "eyJzdWIiOiJtZSJ9",
+//   signature = None
+// )
+val req = Request[IO](uri = uri"/test").withHeaders(
+  Authorization(Credentials.Token(AuthScheme.Bearer, jws.compact))
+)
+// req: Request[[A >: Nothing <: Any] =>> IO[A]] = (
+//    = GET,
+//    = Uri(
+//     scheme = None,
+//     authority = None,
+//     path = /test,
+//     query = ,
+//     fragment = None
+//   ),
+//    = HttpVersion(major = 1, minor = 1),
+//    = Headers(Authorization: Bearer e30.eyJzdWIiOiJtZSJ9),
+//    = Stream(..),
+//    = org.typelevel.vault.Vault@dce343c
+// )
+
+val res = httpApp.run(req).unsafeRunSync()
+// res: Response[[A >: Nothing <: Any] =>> IO[A]] = (
+//    = Status(code = 200),
+//    = HttpVersion(major = 1, minor = 1),
+//    = Headers(Content-Type: text/plain; charset=UTF-8, Content-Length: 2),
+//    = Stream(..),
+//    = org.typelevel.vault.Vault@6e85002b
+// )
+```
 
 ## Links / Literature
 

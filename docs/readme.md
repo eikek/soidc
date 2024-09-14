@@ -191,6 +191,51 @@ validator.validate(otherJws).unsafeRunSync() == None
 This module provides routes for doing an OpenID code flow and a
 middleware for verifying JWT tokens.
 
+```scala mdoc:reset
+import cats.effect.*
+import cats.effect.unsafe.implicits.*
+
+import org.http4s.*
+import org.http4s.implicits.*
+import org.http4s.dsl.io.*
+import org.http4s.headers.Authorization
+import org.http4s.server.AuthMiddleware
+
+import soidc.borer.given
+import soidc.core.JwtValidator
+import soidc.http4s.routes.JwtAuth
+import soidc.http4s.routes.JwtContext.*
+import soidc.jwt.*
+
+
+type Context = Authenticated[JoseHeader, SimpleClaims]
+
+val testRoutes = AuthedRoutes.of[Context, IO] {
+  case ContextRequest(context, GET -> Root / "test") =>
+    Ok(context.token.claims.subject.map(_.value).getOrElse(""))
+}
+
+val validator = JwtValidator.alwaysValid[IO, JoseHeader, SimpleClaims]
+val withAuth = AuthMiddleware(
+  JwtAuth.builder[IO, JoseHeader, SimpleClaims] // capture types here
+    .withBearerToken  // get the token from "Authorization Bearer …"
+    .withValidator(validator) // use this validator
+    .withOnInvalidToken(IO.println) // print to stdout in case of error
+    .secured  // valid token must exist and, use .optional to allow non-authenticated requests
+)
+val httpApp = withAuth(testRoutes).orNotFound
+
+// create sample request
+val jws =
+  JWS(Base64String.encodeString("{}"), Base64String.encodeString("""{"sub":"me"}"""))
+val req = Request[IO](uri = uri"/test").withHeaders(
+  Authorization(Credentials.Token(AuthScheme.Bearer, jws.compact))
+)
+
+val res = httpApp.run(req).unsafeRunSync()
+
+
+```
 
 ## Links / Literature
 
