@@ -19,6 +19,18 @@ final case class SimpleClaims(
   def withExpirationTime(exp: NumericDate): SimpleClaims =
     copy(expirationTime = Some(exp), values = values.replace(P.Exp, exp))
 
+  def withSubject(sub: StringOrUri): SimpleClaims =
+    copy(subject = Some(sub), values = values.replace(P.Sub, sub))
+
+  def withAudience(aud: StringOrUri): SimpleClaims =
+    copy(audience = List(aud), values = values.replace(P.Aud, aud))
+
+  def withNotBefore(nbf: NumericDate): SimpleClaims =
+    copy(notBefore = Some(nbf), values = values.replace(P.Nbf, nbf))
+
+  def withJwtId(jti: String): SimpleClaims =
+    copy(jwtId = Some(jti), values = values.replace(P.Jti, jti))
+
   def withValue[V: ToJson](name: ParameterName, value: V): SimpleClaims =
     copy(values = values.replace(name, value))
 
@@ -40,4 +52,4 @@ object SimpleClaims:
   given ToJson[SimpleClaims] = ToJson.instance(_.values)
 
   given StandardClaims[SimpleClaims] =
-    StandardClaims(_.notBefore, _.expirationTime, _.issuer)
+    StandardClaims(_.notBefore, _.expirationTime, _.issuer, _.jwtId)

@@ -11,10 +11,12 @@ opaque type Base64String = String
 object Base64String:
   private val alphabet = Alphabets.Base64UrlNoPad
 
-  def of(b64: String): Either[String, Base64String] =
-    ByteVector.fromBase64Descriptive(b64, alphabet).map(_ => b64)
+  def of(b64: String, m: String*): Either[String, Base64String] =
+    val v = (b64 +: m).mkString
+    ByteVector.fromBase64Descriptive(v, alphabet).map(_ => b64)
 
-  def unsafeOf(b64: String): Base64String = b64
+  def unsafeOf(b64: String, m: String*): Base64String =
+    (b64 +: m).mkString
 
   def encodeString(plain: String): Base64String =
     ByteVector.view(plain.getBytes()).toBase64(alphabet)

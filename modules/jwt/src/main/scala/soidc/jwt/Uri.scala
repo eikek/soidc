@@ -9,7 +9,7 @@ object Uri:
   private val schemeRegex = "^[a-zA-Z][a-zA-Z0-9\\+\\-\\.]*:.*".r
 
   def fromString(s: String): Either[String, Uri] =
-    if (s.isEmpty() || schemeRegex.matches(s)) Right(s.trim)
+    if (schemeRegex.matches(s.trim)) Right(s.trim)
     else Left(s"Invalid uri: $s")
 
   def unsafeFromString(s: String): Uri =
@@ -20,6 +20,8 @@ object Uri:
 
   extension (self: Uri)
     def value: String = self
-    def isEmpty: Boolean = self.isEmpty()
 
-    def addPath(path: String): Uri = ???
+    def addPath(path: String): Uri =
+      val p = if (path.startsWith("/")) path.drop(1) else path
+      val u = if (self.endsWith("/")) self.dropRight(1) else self
+      s"${u}/${p}"

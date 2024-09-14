@@ -12,9 +12,11 @@ final case class JWSDecoded[H, C](
   export jws.{compact, payload, verifySignature}
 
   def validate(key: JWK, currentTime: Instant, timingLeeway: Duration = Duration.Zero)(
-      using StandardClaims[C]
+      using
+      StandardClaims[C],
+      StandardHeader[H]
   ): Validate.Result =
-    Validate.validateSignature(key, jws) + Validate.validateTime(timingLeeway)(
+    Validate.validateSignature(key, this) + Validate.validateTime(timingLeeway)(
       claims,
       currentTime
     )

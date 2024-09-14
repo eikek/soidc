@@ -93,7 +93,7 @@ class JWSTest extends FunSuite with Syntax:
 
   test("JWS with EC signature ES256"):
     val data = Rfc7515.Appendix3
-    val jws = JWS(data.heade64, data.claim64).unsafeSignWith(data.ecKey)
+    val jws = JWS(data.header64, data.claim64).unsafeSignWith(data.ecKey)
     assert(
       JwtUtils.verify(
         jws.payload.toArray,
@@ -114,7 +114,7 @@ class JWSTest extends FunSuite with Syntax:
 
   test("JWS with EC signature ES512"):
     val data = Rfc7515.Appendix4
-    val jws = JWS(data.heade64, data.claim64).unsafeSignWith(data.ecKey)
+    val jws = JWS(data.header64, data.claim64).unsafeSignWith(data.ecKey)
     assert(
       JwtUtils.verify(
         jws.removeSignature.compact.getBytes(),

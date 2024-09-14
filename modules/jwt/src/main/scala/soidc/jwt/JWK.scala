@@ -26,6 +26,15 @@ final case class JWK(
   def withKeyType(kty: KeyType): JWK =
     copy(keyType = kty, values = values.replace(P.Kty, kty))
 
+  def withKeyId(kid: KeyId): JWK =
+    copy(keyId = Some(kid), values = values.replace(P.Kid, kid))
+
+  def withKeyUse(us: KeyUse): JWK =
+    copy(keyUse = Some(us), values = values.replace(P.Use, us))
+
+  def withKeyOperation(op: KeyOperation*): JWK =
+    copy(keyOperation = op.toList, values = values.replace(P.KeyOps, op.toList))
+
   def getPublicKey: Either[JwtError, PublicKey] =
     keyType match
       case KeyType.RSA => RsaKey.createPublicKey(this)

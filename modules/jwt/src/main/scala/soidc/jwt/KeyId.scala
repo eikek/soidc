@@ -10,6 +10,9 @@ object KeyId:
     if (str.trim.isEmpty()) Left(s"Empty key-id not allowed")
     else Right(str)
 
+  def unsafeFromString(str: String): KeyId =
+    fromString(str).fold(sys.error, identity)
+
   given FromJson[KeyId] = FromJson.str(s => fromString(s).left.map(DecodeError(_)))
   given ToJson[KeyId] = ToJson.forString
 

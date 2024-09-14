@@ -21,7 +21,7 @@ trait BorerJsonCodec:
   given Decoder[StringOrUri] = Decoder.forString.map(StringOrUri.apply)
 
   given Encoder[Base64String] = Encoder.forString.contramap(_.value)
-  given Decoder[Base64String] = Decoder.forString.mapEither(Base64String.of)
+  given Decoder[Base64String] = Decoder.forString.mapEither(Base64String.of(_))
 
   given Encoder[NumericDate] = Encoder.forLong.contramap(_.toSeconds)
   given Decoder[NumericDate] = Decoder.forLong.map(NumericDate.seconds)

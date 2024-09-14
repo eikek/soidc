@@ -1,8 +1,9 @@
 package soidc.core
 
+import scala.util.Try
+
 import munit.FunSuite
 import soidc.jwt.*
-import scala.util.Try
 
 class JwtValidatorTest extends FunSuite:
 
@@ -51,7 +52,8 @@ class JwtValidatorTest extends FunSuite:
     assertEquals(r, JwtValidator.Result.notApplicable)
 
   test("scoped filters validation"):
-    val v1 = JwtValidator.invalid[Try, Unit, Unit](fail1)
+    val v1 = JwtValidator
+      .invalid[Try, Unit, Unit](fail1)
       .scoped(_.jws.header == Base64String.unsafeOf("Yg"))
-    val r = v1.validate(makeJwt((),())).get
+    val r = v1.validate(makeJwt((), ())).get
     assertEquals(r, None)

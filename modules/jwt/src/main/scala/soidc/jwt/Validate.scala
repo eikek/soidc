@@ -11,7 +11,9 @@ object Validate:
     case Inactive(nbf: Instant)
     case SignatureVerifyError(cause: JwtError.VerifyError)
     case SignatureInvalid
-    case KeyNotFound
+    case KeyNotFoundInHeader(jti: Option[String])
+    case KeyNotInJWKSet(kid: KeyId)
+    case AlgorithmMismatch(key: Option[Algorithm], jws: Option[Algorithm])
     case GenericReason(msg: String, cause: Option[Throwable] = None)
 
   opaque type Result = Set[FailureReason]
@@ -59,17 +61,27 @@ object Validate:
     }
     v1.getOrElse(Result.success) ++ v2.getOrElse(Result.success)
 
-  def validateSignature(key: JWK, jws: JWS): Result =
-    jws.verifySignature(key) match
-      case Right(result) => Result.cond(result, FailureReason.SignatureInvalid)
-      case Left(err)     => Result.failed(FailureReason.SignatureVerifyError(err))
-
-  def validateSignature[H, C](keySet: JWKSet, jws: JWSDecoded[H, C])(using
+  def validateSignature[H, C](key: JWK, jws: JWSDecoded[H, C])(using
       StandardHeader[H]
   ): Result =
-    val key = StandardHeader[H].keyId(jws.header).flatMap(keySet.get)
-    key match
+    val jwsAlg = StandardHeader[H].algorithm(jws.header)
+    if (key.algorithm != jwsAlg)
+      Result.failed(FailureReason.AlgorithmMismatch(key.algorithm, jwsAlg))
+    else
+      jws.verifySignature(key) match
+        case Right(result) => Result.cond(result, FailureReason.SignatureInvalid)
+        case Left(err)     => Result.failed(FailureReason.SignatureVerifyError(err))
+
+  def validateSignature[H, C](keySet: JWKSet, jws: JWSDecoded[H, C])(using
+      StandardHeader[H],
+      StandardClaims[C]
+  ): Result =
+    StandardHeader[H].keyId(jws.header) match
       case None =>
-        Result.failed(FailureReason.KeyNotFound)
-      case Some(jwk) =>
-        validateSignature(jwk, jws.jws)
+        val jti = StandardClaims[C].jwtId(jws.claims)
+        Result.failed(FailureReason.KeyNotFoundInHeader(jti))
+      case Some(key) =>
+        keySet.get(key) match
+          case None =>
+            Result.failed(FailureReason.KeyNotInJWKSet(key))
+          case Some(jwk) => validateSignature(jwk, jws)

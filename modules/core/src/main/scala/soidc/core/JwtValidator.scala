@@ -158,6 +158,7 @@ object JwtValidator:
       timingLeeway: FiniteDuration
   )(using
       StandardClaims[C],
+      StandardHeader[H],
       Monad[F]
   ): JwtValidator[F, H, C] =
     instance(jws => clock.realTimeInstant.map(jws.validate(jwk, _, timingLeeway).some))
