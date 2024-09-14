@@ -6,7 +6,6 @@ import soidc.jwt.json.{FromJson, ToJson}
 opaque type StringOrUri = String
 
 object StringOrUri:
-
   def apply(str: String): StringOrUri = str
 
   given FromJson[StringOrUri] = FromJson.str(Right(_))
@@ -14,4 +13,4 @@ object StringOrUri:
 
   extension (self: StringOrUri)
     def value: String = self
-    def isURI: Boolean = self.contains(':')
+    def isURI: Boolean = Uri.fromString(self).isRight

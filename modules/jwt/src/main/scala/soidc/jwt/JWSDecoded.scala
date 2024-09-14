@@ -1,9 +1,10 @@
 package soidc.jwt
 
 import java.time.Instant
-import soidc.jwt.json.*
 
 import scala.concurrent.duration.Duration
+
+import soidc.jwt.json.*
 
 final case class JWSDecoded[H, C](
     jws: JWS,

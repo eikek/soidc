@@ -30,6 +30,7 @@ object Rfc7515:
           ),
           Algorithm.HS256
         )
+        .withKeyType(KeyType.OCT)
         .withKeyId(KeyId.unsafeFromString("appendix1"))
 
     val signature: Base64String =
@@ -49,6 +50,7 @@ object Rfc7515:
     val rsaKey: JWK = JWK(KeyType.RSA)
       .withAlgorithm(Algorithm.RS256)
       .withKeyId(KeyId.unsafeFromString("appendix2"))
+      .withKeyType(KeyType.RSA)
       .withValue(
         RsaKey.Param.N,
         Base64String.unsafeOf(

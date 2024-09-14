@@ -29,6 +29,9 @@ object JsonValue:
         _.toRight(DecodeError(s"Missing json property: ${name.key}"))
       )
 
+    def hasParameter(name: ParameterName): Boolean =
+      value.contains(name.key)
+
     def replace[V: ToJson](name: ParameterName, v: V): Obj =
       Obj(value.updated(name.key, v.toJsonValue))
 

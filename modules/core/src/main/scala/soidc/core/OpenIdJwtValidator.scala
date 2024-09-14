@@ -24,26 +24,36 @@ final class OpenIdJwtValidator[F[_], H, C](
     JsonDecoder[OpenIdConfig],
     JsonDecoder[JWKSet]
 ) extends JwtValidator[F, H, C]:
+  override def toString(): String = s"OpenIdJwtValidator(config=$config, client=$client)"
 
   def validate(jws: JWSDecoded[H, C]): F[Result] =
     create.validate(jws)
 
-  def create = JwtValidator.selectF[F, H, C] { jws =>
-    StandardClaims[C]
-      .issuer(jws.claims)
-      .flatMap(s => Uri.fromString(s.value).toOption) match
-      case None => JwtValidator.notApplicable[F, H, C].pure[F]
-      case Some(issuer) =>
-        for
-          jwks <- state.get.map(_.get(issuer))
-          v1 = JwtValidator
-            .validateWithJWKSet(jwks.jwks, clock, config.timingLeeway)
-            .invalidToNotApplicable
-          v2 <- fetchJWKSetGuarded(issuer).map { jwks =>
-            JwtValidator.validateWithJWKSet(jwks, clock, config.timingLeeway)
-          }
-        yield v1.orElse(v2)
-  }
+  def create: JwtValidator[F, H, C] =
+    JwtValidator.selectF[F, H, C] { jws =>
+      StandardClaims[C]
+        .issuer(jws.claims)
+        .flatMap(s => Uri.fromString(s.value).toOption) match
+        case None =>
+          config.jwksProvider match
+            case JwksProvider.FromIssuer(_) =>
+              JwtValidator.notApplicable[F, H, C].pure[F]
+            case _ =>
+              val dummyIssuer = Uri.unsafeFromString("static:")
+              state.get.map(_.get(dummyIssuer)).flatMap(s => create(dummyIssuer, s.jwks))
+
+        case Some(issuer) =>
+          state.get.map(_.get(issuer)).flatMap(s => create(issuer, s.jwks))
+    }
+
+  def create(issuer: Uri, jwks: JWKSet): F[JwtValidator[F, H, C]] =
+    val v1 = JwtValidator
+      .validateWithJWKSet(jwks, clock, config.timingLeeway)
+      .invalidToNotApplicable
+    val v2 = fetchJWKSetGuarded(issuer).map { jwks =>
+      JwtValidator.validateWithJWKSet(jwks, clock, config.timingLeeway)
+    }
+    v2.map(v1.orElse(_))
 
   def fetchJWKSetGuarded(issuer: Uri): F[JWKSet] =
     for
@@ -62,17 +72,27 @@ final class OpenIdJwtValidator[F[_], H, C](
         case _ => MonadThrow[F].raiseError(SoidcError.TooManyValidationRequests(min))
       }
 
+  def getOpenIdConfig(uri: Uri): F[OpenIdConfig] =
+    EitherT(client.get[OpenIdConfig](uri).attempt)
+      .leftMap(ex => SoidcError.OpenIdConfigError(uri, ex))
+      .rethrowT
+
+  def getJWKSet(uri: Uri): F[JWKSet] =
+    EitherT(client.get[JWKSet](uri).attempt)
+      .leftMap(ex => SoidcError.JwksError(uri, ex))
+      .rethrowT
+
+  def findJWKSet(issuerUri: Uri) = config.jwksProvider match
+    case JwksProvider.FromIssuer(path) =>
+      getOpenIdConfig(issuerUri.addPath(path)).flatMap(c => getJWKSet(c.jwksUri))
+    case JwksProvider.StaticJwksUri(uri) => getJWKSet(uri)
+    case JwksProvider.StaticOpenIdUri(uri) =>
+      getOpenIdConfig(uri).flatMap(c => getJWKSet(c.jwksUri))
+
   def fetchJWKSet(issuerUri: Uri): F[JWKSet] =
     for
       _ <- clock.monotonic.flatMap(t => state.update(_.setLastUpdate(issuerUri, t)))
-      configUri = issuerUri.addPath(config.openIdConfigPath)
-      openIdCfg <- EitherT(client.get[OpenIdConfig](configUri).attempt)
-        .leftMap(ex => SoidcError.OpenIdConfigError(configUri, ex))
-        .rethrowT
-
-      jwks <- EitherT(client.get[JWKSet](openIdCfg.jwksUri).attempt)
-        .leftMap(ex => SoidcError.JwksError(openIdCfg.jwksUri, ex))
-        .rethrowT
+      jwks <- findJWKSet(issuerUri)
       _ <- state.update(_.setJwks(issuerUri, jwks))
     yield jwks
 
@@ -81,9 +101,8 @@ object OpenIdJwtValidator:
     *
     * @param minRequestDelay
     *   minimum delay between requests to fetch an JWKS
-    * @param openIdConfigPath
-    *   the uri path part after the issuer url that denotes the endpoint to get the
-    *   configuration data from
+    * @param jwksProvider
+    *   how to retrieve a JWKSet finally used to verify the token
     * @param timingLeeway
     *   A short duration to extend timing validation (nbf and exp) to make up for clock
     *   skew
@@ -91,8 +110,21 @@ object OpenIdJwtValidator:
   final case class Config(
       minRequestDelay: FiniteDuration = 1.minute,
       timingLeeway: FiniteDuration = 30.seconds,
-      openIdConfigPath: String = ".well-known/openid-configuration"
-  )
+      jwksProvider: JwksProvider = JwksProvider.FromIssuer()
+  ):
+    def withJwksProvider(p: JwksProvider): Config =
+      copy(jwksProvider = p)
+
+    def withJwksUri(uri: Uri): Config =
+      withJwksProvider(JwksProvider.StaticJwksUri(uri))
+
+    def withOpenIdConfigUri(uri: Uri): Config =
+      withJwksProvider(JwksProvider.StaticOpenIdUri(uri))
+
+  enum JwksProvider:
+    case FromIssuer(path: String = ".well-known/openid-configuration")
+    case StaticOpenIdUri(uri: Uri)
+    case StaticJwksUri(uri: Uri)
 
   /** For maintaining last fetch and access of this JWKS */
   final case class JwksState(

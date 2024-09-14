@@ -16,9 +16,18 @@ enum Algorithm:
 
   def name: String = productPrefix
 
-  def isEC: Boolean = Set(ES256, ES384, ES512).contains(this)
-  def isHMAC: Boolean = Set(HS256, HS384, HS512).contains(this)
-  def isRSA: Boolean = Set(RS256, RS384, RS512).contains(this)
+  def isEC: Boolean = fold(_ => true, _ => false, _ => false)
+  def isHMAC: Boolean = fold(_ => false, _ => true, _ => false)
+  def isRSA: Boolean = fold(_ => false, _ => false, _ => true)
+
+  def keyType: KeyType =
+    fold(_ => KeyType.EC, _ => KeyType.OCT, _ => KeyType.RSA)
+
+  def fold[A](ec: Algorithm => A, hmac: Algorithm => A, rsa: Algorithm => A): A =
+    this match
+      case HS256 | HS384 | HS512 => hmac(this)
+      case RS256 | RS384 | RS512 => rsa(this)
+      case ES256 | ES384 | ES512 => ec(this)
 
 object Algorithm:
   def fromString(str: String): Either[String, Algorithm] =

@@ -21,7 +21,8 @@ final case class JWK(
     copy(values = values.replace(param, value))
 
   def withAlgorithm(alg: Algorithm): JWK =
-    copy(algorithm = Some(alg), values = values.replace(P.Alg, alg))
+    withKeyType(alg.keyType)
+      .copy(algorithm = Some(alg), values = values.replace(P.Alg, alg))
 
   def withKeyType(kty: KeyType): JWK =
     copy(keyType = kty, values = values.replace(P.Kty, kty))
@@ -80,11 +81,13 @@ object JWK:
 
   def fromObj(values: JsonValue.Obj): Either[DecodeError, JWK] =
     for
-      kty <- values.requireAs[KeyType](P.Kty)
       kid <- values.getAs[KeyId](P.Kid)
       us <- values.getAs[KeyUse](P.Use)
       keyop <- values.getAs[List[KeyOperation]](P.KeyOps)
       alg <- values.getAs[Algorithm](P.Alg)
+      kty <- alg match
+        case None    => values.requireAs[KeyType](P.Kty)
+        case Some(a) => values.getAs[KeyType](P.Kty).map(_.getOrElse(a.keyType))
     yield JWK(kty, us, keyop.getOrElse(Nil), kid, alg, values)
 
   given FromJson[JWK] = FromJson.obj(fromObj)

@@ -37,7 +37,7 @@ trait JwtValidator[F[_], H, C]:
   /** If this validator returns a "not applicable" result, the `next` validator is tried.
     */
   infix def orElse(
-      next: JwtValidator[F, H, C]
+      next: => JwtValidator[F, H, C]
   )(using Monad[F]): JwtValidator[F, H, C] =
     JwtValidator.instance { jws =>
       validate(jws).flatMap {

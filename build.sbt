@@ -89,6 +89,18 @@ val jwt = project
       Dependencies.jwtScala.map(_ % Test)
   )
 
+val borer = project
+  .in(file("modules/borer"))
+  .settings(sharedSettings)
+  .settings(testSettings)
+  .settings(scalafixSettings)
+  .settings(
+    name := "soidc-borer",
+    description := "Provides borer json codec",
+    libraryDependencies ++= Dependencies.borer
+  )
+  .dependsOn(jwt % "compile->compile;test->test")
+
 val core = project
   .in(file("modules/core"))
   .settings(sharedSettings)
@@ -100,19 +112,7 @@ val core = project
     libraryDependencies ++=
       Dependencies.catsCore ++ Dependencies.catsEffect
   )
-  .dependsOn(jwt)
-
-val borer = project
-  .in(file("modules/borer"))
-  .settings(sharedSettings)
-  .settings(testSettings)
-  .settings(scalafixSettings)
-  .settings(
-    name := "soidc-borer",
-    description := "Provides borer json codec",
-    libraryDependencies ++= Dependencies.borer
-  )
-  .dependsOn(jwt % "compile->compile,test->test")
+  .dependsOn(jwt % "compile->compile;test->test", borer % "test->test")
 
 val http4sClient = project
   .in(file("modules/http4s-client"))
@@ -126,7 +126,7 @@ val http4sClient = project
     libraryDependencies ++=
       Dependencies.http4sCore ++ Dependencies.http4sClient
   )
-  .dependsOn(core % "compile->compile,test->test")
+  .dependsOn(core % "compile->compile;test->test")
 
 val http4sRoutes = project
   .in(file("modules/http4s-routes"))

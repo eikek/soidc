@@ -14,9 +14,9 @@ form of a [JWS](https://datatracker.ietf.org/doc/html/rfc7515).
 
 The header and claims structure are abstract and users need to provide
 an implementation of `StandardHeader` and `StandardClaims`,
-respectively, to use the interesting features of this modue, like
-signature validation. For a simple start, concrete types `JoseHeader`
-and `SimpleClaims` are provided.
+respectively, to use some features of this modue, like timing
+validation. For a start, concrete types `JoseHeader` and
+`SimpleClaims` are provided.
 
 To not depend on a specific JSON library while being able to provide
 some convenience, there is a small JSON AST subset defined and type
@@ -103,6 +103,89 @@ val tooLate = java.time.Instant.ofEpochSecond(1603000500)
 jwt.validate(jwk, tooLate).isValid
 ```
 
+### core
+
+The `core` module provides a composable `JwtValidator`. It is based on
+the `jwt` module cats-effect. A `JwtValidator` defines a way to
+validate a token (given as a `JWSDecoded` value). A `JwtValidator`
+either returns whether the input is valid, or it may choose to not
+process the input. This allows to chain multiple validators each for a
+specific JWT (like per issuer).
+
+#### `OpenIdJwtValidator`
+
+The main implementation is the `OpenIdJwtValidator`. During
+validation, it will fetch the `.well-known/openid-configuration` from
+a provider (obtained via the issuer claim) to get the `jwks` for
+verifying the signature using the public key from the providers JWK
+set. This requires to list a set of allowed issuers via its
+configuration!
+
+If validation fails for the first time, a new `JWKSet` is tried to
+fetch and then tried again (keys could have been rotated).
+
+Instead of obtaining the openid-config uri from the issuer in the jwt,
+the uri can also be given at construction time.
+
+The example demonstrates the use with a dummy http-client, the
+`http4s-client` module provides an implementation based on http4s.
+When using this config, you should restrict this validator to a
+trusted set of issuer urls as done with `.forIssuer` in the example.
+
+```scala mdoc:reset
+import soidc.jwt.*
+import soidc.jwt.json.syntax.*
+import soidc.borer.given
+import soidc.core.*
+import cats.effect.*
+import cats.effect.unsafe.implicits.*
+
+def createJWS(claims: SimpleClaims, kid: String = "key1"): (DefaultJWS, JWK) =
+  val alg = Algorithm.HS256
+  val jwk = JWK.symmetric(Base64String.encodeString("hello"), alg).withKeyId(kid.keyId)
+  val jws = JWSDecoded.createSigned(
+    JoseHeader.jwt.withAlgorithm(alg).withKeyId(kid.keyId),
+    claims,
+    jwk
+  )
+  jws.fold(throw _, (_, jwk))
+
+extension (self: String)
+  def uri = Uri.unsafeFromString(self)
+  def keyId = KeyId.unsafeFromString(self)
+
+val issuer = "http://issuer".uri
+val (jws, jwk) = createJWS(SimpleClaims.empty.withIssuer(StringOrUri(issuer.value)))
+val jwksUri = "http://jwkb".uri
+val oidUri = "http://issuer/.well-known/openid-configuration".uri
+val dummyUri = "dummy:".uri
+val client = HttpClient.fromMap[IO](
+  Map(
+    jwksUri -> JWKSet(jwk).toJsonValue,
+    oidUri -> OpenIdConfig(
+      dummyUri,
+      dummyUri,
+      dummyUri,
+      dummyUri,
+      jwksUri
+    ).toJsonValue
+  )
+)
+
+// create validator with default config that looks up an openid-configuration
+// by appending '.well-known/openid-configuration' to the issuer url of the jwt
+val cfg = OpenIdJwtValidator.Config()
+val validator = JwtValidator
+  .openId[IO, JoseHeader, SimpleClaims](cfg, client)
+  .map(_.forIssuer(_.startsWith("http://issuer"))) // restrict this to the a known issuer
+  .unsafeRunSync()
+
+validator.validate(jws).unsafeRunSync() == Some(Validate.Result.success)
+
+val (otherJws, _) = createJWS(SimpleClaims.empty.withIssuer(StringOrUri("http://other")))
+validator.validate(otherJws).unsafeRunSync() == None
+```
+
 ### http4s-routes
 
 This module provides routes for doing an OpenID code flow and a
@@ -111,7 +194,4 @@ middleware for verifying JWT tokens.
 
 ## Links / Literature
 
-- Jwk (JSON Web Key) https://datatracker.ietf.org/doc/html/rfc7517
-- Jwt (JSON Web Token) https://datatracker.ietf.org/doc/html/rfc7519
-- Jws (JSON Web Signature) https://datatracker.ietf.org/doc/html/rfc7515#appendix-A.1
 - Jwa (JSON Web Algorithms) https://datatracker.ietf.org/doc/html/rfc7518
