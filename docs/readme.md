@@ -18,12 +18,12 @@ respectively, to use some features of this modue, like timing
 validation. For a start, concrete types `JoseHeader` and
 `SimpleClaims` are provided.
 
-To not depend on a specific JSON library while being able to provide
+To not depend on a specific JSON library and being able to provide
 some convenience, there is a small JSON AST subset defined and type
 classes to decode and encode from this AST. This allows to provide a
-very simple bridge using a specific JSON library to use the provided
-features (as done in `soidc-borer` module). You can always choose your
-own types and encoders/decodes to bypass this, though.
+simple bridge using a specific JSON library (as done in `soidc-borer`
+module) to use the provided features. You can always choose your own
+types and encoders/decodes to bypass this, though.
 
 Keys are represented as
 [JWK](https://datatracker.ietf.org/doc/html/rfc7517) that can enclose
@@ -191,14 +191,15 @@ validator.validate(otherJws).unsafeRunSync() == None
 This module provides routes for doing an OpenID code flow and a
 middleware for verifying JWT tokens.
 
-```scala mdoc:reset
-import cats.effect.*
-import cats.effect.unsafe.implicits.*
+The `JwtAuth` object can be used to create code extracting and
+validating JWTs for http4s `AuthMiddleware`. Just define routes
+requiring a specific `JwtContext` and apply it to the
+`AuthMiddleware`.
 
+```scala mdoc:reset:silent
+import cats.effect.*
 import org.http4s.*
-import org.http4s.implicits.*
 import org.http4s.dsl.io.*
-import org.http4s.headers.Authorization
 import org.http4s.server.AuthMiddleware
 
 import soidc.borer.given
@@ -207,15 +208,18 @@ import soidc.http4s.routes.JwtAuth
 import soidc.http4s.routes.JwtContext.*
 import soidc.jwt.*
 
-
 type Context = Authenticated[JoseHeader, SimpleClaims]
 
+// your routes requiring authenticated requests
 val testRoutes = AuthedRoutes.of[Context, IO] {
   case ContextRequest(context, GET -> Root / "test") =>
     Ok(context.token.claims.subject.map(_.value).getOrElse(""))
 }
 
+// pick a validator, here just for testing
 val validator = JwtValidator.alwaysValid[IO, JoseHeader, SimpleClaims]
+
+// create the middleware that does token validation
 val withAuth = AuthMiddleware(
   JwtAuth.builder[IO, JoseHeader, SimpleClaims] // capture types here
     .withBearerToken  // get the token from "Authorization Bearer …"
@@ -223,6 +227,18 @@ val withAuth = AuthMiddleware(
     .withOnInvalidToken(IO.println) // print to stdout in case of error
     .secured  // valid token must exist and, use .optional to allow non-authenticated requests
 )
+```
+
+Now, `withAuth` can be used to turn the `testRoutes` into a normal
+`HttpRoutes[F]` to be finally served:
+
+```scala mdoc
+import cats.effect.unsafe.implicits.*
+
+import org.http4s.implicits.*
+import org.http4s.headers.Authorization
+
+// apply authentication code to testRoutes
 val httpApp = withAuth(testRoutes).orNotFound
 
 // create sample request
@@ -233,8 +249,6 @@ val req = Request[IO](uri = uri"/test").withHeaders(
 )
 
 val res = httpApp.run(req).unsafeRunSync()
-
-
 ```
 
 ## Links / Literature
