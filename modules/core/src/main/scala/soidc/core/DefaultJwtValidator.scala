@@ -7,7 +7,7 @@ import cats.effect.*
 import cats.syntax.all.*
 
 import soidc.jwt.*
-import soidc.jwt.json.JsonDecoder
+import soidc.jwt.codec.ByteDecoder
 
 object DefaultJwtValidator:
 
@@ -24,8 +24,8 @@ object DefaultJwtValidator:
       StandardClaims[C],
       StandardHeader[H],
       MonadThrow[F],
-      JsonDecoder[OpenIdConfig],
-      JsonDecoder[JWKSet],
+      ByteDecoder[OpenIdConfig],
+      ByteDecoder[JWKSet],
       Ref.Make[F],
       Clock[F]
   ): F[JwtValidator[F, H, C]] =
@@ -43,8 +43,8 @@ object DefaultJwtValidator:
 
   def default[F[_]](config: Config, client: HttpClient[F])(using
       MonadThrow[F],
-      JsonDecoder[OpenIdConfig],
-      JsonDecoder[JWKSet],
+      ByteDecoder[OpenIdConfig],
+      ByteDecoder[JWKSet],
       Ref.Make[F],
       Clock[F]
   ): F[JwtValidator[F, JoseHeader, SimpleClaims]] =

@@ -4,7 +4,7 @@ import cats.syntax.all.*
 
 import soidc.jwt.*
 import soidc.jwt.JwtError.DecodeError
-import soidc.jwt.json.{FromJson, JsonValue, ToJson}
+import soidc.jwt.codec.{FromJson, JsonValue, ToJson}
 
 final case class OpenIdConfig(
     issuer: Uri,

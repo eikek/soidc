@@ -23,7 +23,9 @@ some convenience, there is a small JSON AST subset defined and type
 classes to decode and encode from this AST. This allows to provide a
 simple bridge using a specific JSON library (as done in `soidc-borer`
 module) to use the provided features. You can always choose your own
-types and encoders/decodes to bypass this, though.
+types and encoders/decodes to bypass this, though. Then these
+decoder/encoder work on `ByteVector`, so tokens don't have to be in
+JSON format in theory.
 
 Keys are represented as
 [JWK](https://datatracker.ietf.org/doc/html/rfc7517) that can enclose
@@ -246,7 +248,7 @@ trusted set of issuer urls as done with `.forIssuer` in the example.
 First some setup code:
 ```scala
 import soidc.jwt.*
-import soidc.jwt.json.syntax.*
+import soidc.jwt.codec.syntax.*
 import soidc.borer.given
 import soidc.core.*
 import cats.effect.*
@@ -301,7 +303,7 @@ val validator = JwtValidator
   .openId[IO, JoseHeader, SimpleClaims](cfg, client)
   .map(_.forIssuer(_.startsWith("http://issuer"))) // restrict this to the a known issuer
   .unsafeRunSync()
-// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.JwtValidator$$anon$1@52e04bbf
+// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.JwtValidator$$anon$1@3ef79a66
 
 validator.validate(jws).unsafeRunSync() == Some(Validate.Result.success)
 // res9: Boolean = true
@@ -392,13 +394,13 @@ val testRoutes = AuthedRoutes.of[Context, IO] {
     Ok(context.claims.subject.map(_.value).getOrElse(""))
 }
 // testRoutes: Kleisli[[_$10 >: Nothing <: Any] =>> OptionT[[A >: Nothing <: Any] =>> IO[A], _$10], ContextRequest[[A >: Nothing <: Any] =>> IO[A], Context], Response[[A >: Nothing <: Any] =>> IO[A]]] = Kleisli(
-//   run = org.http4s.AuthedRoutes$$$Lambda$3582/0x0000000801a860d0@4b078ff4
+//   run = org.http4s.AuthedRoutes$$$Lambda$3582/0x0000000801a86b70@11ece41c
 // )
 
 // apply authentication code to testRoutes
 val httpApp = withAuth(testRoutes).orNotFound
 // httpApp: Kleisli[[A >: Nothing <: Any] =>> IO[A], Request[[A >: Nothing <: Any] =>> IO[A]], Response[[A >: Nothing <: Any] =>> IO[A]]] = Kleisli(
-//   run = org.http4s.syntax.KleisliResponseOps$$Lambda$3584/0x0000000801a87720@2b9d6a1e
+//   run = org.http4s.syntax.KleisliResponseOps$$Lambda$3584/0x0000000801a88210@313fdff4
 // )
 
 // create sample request
@@ -424,7 +426,7 @@ val req = Request[IO](uri = uri"/test").withHeaders(
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Authorization: Bearer e30.eyJzdWIiOiJtZSJ9),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@71e21f48
+//    = org.typelevel.vault.Vault@41d72593
 // )
 
 val res = httpApp.run(req).unsafeRunSync()
@@ -433,7 +435,7 @@ val res = httpApp.run(req).unsafeRunSync()
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Content-Type: text/plain; charset=UTF-8, Content-Length: 2),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@41902ed
+//    = org.typelevel.vault.Vault@72577420
 // )
 ```
 

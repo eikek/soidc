@@ -7,7 +7,7 @@ import javax.crypto.spec.SecretKeySpec
 import scodec.bits.ByteVector
 import soidc.jwt.JwtError.DecodeError
 import soidc.jwt.RegisteredParameterName as P
-import soidc.jwt.json.*
+import soidc.jwt.codec.*
 
 final case class JWK(
     keyType: KeyType,

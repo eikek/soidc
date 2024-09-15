@@ -1,6 +1,6 @@
 package soidc.jwt
 
-import soidc.jwt.json.*
+import soidc.jwt.codec.*
 
 enum KeyType:
   case EC

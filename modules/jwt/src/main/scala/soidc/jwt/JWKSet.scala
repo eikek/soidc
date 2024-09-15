@@ -1,6 +1,6 @@
 package soidc.jwt
 
-import soidc.jwt.json.*
+import soidc.jwt.codec.*
 
 final case class JWKSet(keys: List[JWK]):
   def get(id: KeyId): Option[JWK] =

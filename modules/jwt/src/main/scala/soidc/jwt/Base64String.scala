@@ -3,8 +3,8 @@ package soidc.jwt
 import scodec.bits.Bases.Alphabets
 import scodec.bits.ByteVector
 import soidc.jwt.JwtError.DecodeError
-import soidc.jwt.json.JsonDecoder
-import soidc.jwt.json.{FromJson, ToJson}
+import soidc.jwt.codec.ByteDecoder
+import soidc.jwt.codec.{FromJson, ToJson}
 
 opaque type Base64String = String
 
@@ -36,5 +36,5 @@ object Base64String:
     def decoded: ByteVector = ByteVector.fromValidBase64(self, alphabet)
     def decodedUtf8: String = decoded.decodeUtf8Lenient
     def decodeBigInt: BigInt = BigInt(1, decoded.toArray)
-    def as[A](using d: JsonDecoder[A]): Either[DecodeError, A] =
+    def as[A](using d: ByteDecoder[A]): Either[DecodeError, A] =
       d.decode(decoded)

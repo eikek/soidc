@@ -23,7 +23,9 @@ some convenience, there is a small JSON AST subset defined and type
 classes to decode and encode from this AST. This allows to provide a
 simple bridge using a specific JSON library (as done in `soidc-borer`
 module) to use the provided features. You can always choose your own
-types and encoders/decodes to bypass this, though.
+types and encoders/decodes to bypass this, though. Then these
+decoder/encoder work on `ByteVector`, so tokens don't have to be in
+JSON format in theory.
 
 Keys are represented as
 [JWK](https://datatracker.ietf.org/doc/html/rfc7517) that can enclose
@@ -135,7 +137,7 @@ trusted set of issuer urls as done with `.forIssuer` in the example.
 First some setup code:
 ```scala mdoc:reset:silent
 import soidc.jwt.*
-import soidc.jwt.json.syntax.*
+import soidc.jwt.codec.syntax.*
 import soidc.borer.given
 import soidc.core.*
 import cats.effect.*

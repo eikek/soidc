@@ -10,7 +10,7 @@ import cats.syntax.all.*
 import soidc.core.JwtValidator.Result
 import soidc.core.OpenIdJwtValidator.*
 import soidc.jwt.*
-import soidc.jwt.json.JsonDecoder
+import soidc.jwt.codec.ByteDecoder
 
 final class OpenIdJwtValidator[F[_], H, C](
     config: Config,
@@ -21,8 +21,8 @@ final class OpenIdJwtValidator[F[_], H, C](
     StandardClaims[C],
     StandardHeader[H],
     MonadThrow[F],
-    JsonDecoder[OpenIdConfig],
-    JsonDecoder[JWKSet]
+    ByteDecoder[OpenIdConfig],
+    ByteDecoder[JWKSet]
 ) extends JwtValidator[F, H, C]:
   override def toString(): String = s"OpenIdJwtValidator(config=$config, client=$client)"
 

@@ -2,7 +2,7 @@ package soidc.jwt
 
 import java.time.Instant
 
-import soidc.jwt.json.{FromJson, ToJson}
+import soidc.jwt.codec.{FromJson, ToJson}
 
 opaque type NumericDate = Long
 

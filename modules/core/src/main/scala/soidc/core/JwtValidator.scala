@@ -11,7 +11,7 @@ import cats.{Monad, Monoid}
 
 import soidc.core.JwtValidator.Result
 import soidc.jwt.*
-import soidc.jwt.json.JsonDecoder
+import soidc.jwt.codec.ByteDecoder
 
 /** Validate JWT token. */
 trait JwtValidator[F[_], H, C]:
@@ -179,8 +179,8 @@ object JwtValidator:
       StandardClaims[C],
       StandardHeader[H],
       MonadThrow[F],
-      JsonDecoder[OpenIdConfig],
-      JsonDecoder[JWKSet],
+      ByteDecoder[OpenIdConfig],
+      ByteDecoder[JWKSet],
       Ref.Make[F],
       Clock[F]
   ): F[JwtValidator[F, H, C]] =

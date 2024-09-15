@@ -8,11 +8,11 @@ import soidc.core.JwtValidator
 import soidc.core.JwtDecodingValidator.{Result, ValidateFailure}
 import soidc.http4s.routes.JwtContext.*
 import soidc.jwt.JWSDecoded
-import soidc.jwt.json.JsonDecoder
+import soidc.jwt.codec.ByteDecoder
 
 /** Functions to obtain an `AuthedRequest` to use with http4s `AuthMiddleware`. */
 object JwtAuth:
-  def builder[F[_]: Monad, H, C](using JsonDecoder[H], JsonDecoder[C]): Builder[F, H, C] =
+  def builder[F[_]: Monad, H, C](using ByteDecoder[H], ByteDecoder[C]): Builder[F, H, C] =
     Builder(
       JwtValidator.notApplicable[F, H, C],
       GetToken.noToken[F],
@@ -23,7 +23,7 @@ object JwtAuth:
       getToken: GetToken[F],
       validator: JwtValidator[F, H, C],
       onInvalidToken: Option[ValidateFailure => F[Unit]] = None
-  )(using JsonDecoder[H], JsonDecoder[C]): JwtAuth[F, Authenticated[H, C]] =
+  )(using ByteDecoder[H], ByteDecoder[C]): JwtAuth[F, Authenticated[H, C]] =
     Kleisli { req =>
       getToken(req) match
         case None => OptionT.none[F, Authenticated[H, C]]
@@ -37,8 +37,8 @@ object JwtAuth:
       validator: JwtValidator[F, H, C],
       onInvalidToken: Option[ValidateFailure => F[Unit]] = None
   )(using
-      JsonDecoder[H],
-      JsonDecoder[C]
+      ByteDecoder[H],
+      ByteDecoder[C]
   ): JwtAuth[F, MaybeAuthenticated[H, C]] =
     Kleisli { req =>
       getToken(req) match
@@ -53,7 +53,7 @@ object JwtAuth:
       validator: JwtValidator[F, H, C],
       token: String,
       onInvalidToken: Option[ValidateFailure => F[Unit]]
-  )(using JsonDecoder[H], JsonDecoder[C]): F[Option[JWSDecoded[H, C]]] =
+  )(using ByteDecoder[H], ByteDecoder[C]): F[Option[JWSDecoded[H, C]]] =
     validator.toDecodingValidator.decodeValidate(token).flatMap {
       case Result.Success(jwt) => jwt.some.pure[F]
       case Result.Failure(err) =>
@@ -64,7 +64,7 @@ object JwtAuth:
       validator: JwtValidator[F, H, C],
       getToken: GetToken[F],
       onInvalidToken: Option[ValidateFailure => F[Unit]]
-  )(using JsonDecoder[H], JsonDecoder[C], Monad[F]) {
+  )(using ByteDecoder[H], ByteDecoder[C], Monad[F]) {
     lazy val secured: JwtAuth[F, Authenticated[H, C]] =
       JwtAuth.secured(getToken, validator, onInvalidToken)
 

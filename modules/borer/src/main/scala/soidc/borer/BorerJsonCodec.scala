@@ -4,7 +4,7 @@ import scala.collection.immutable.ListMap
 
 import io.bullet.borer.*
 import soidc.jwt.*
-import soidc.jwt.json.*
+import soidc.jwt.codec.*
 
 trait BorerJsonCodec:
 

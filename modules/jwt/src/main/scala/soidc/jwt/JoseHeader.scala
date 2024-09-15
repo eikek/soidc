@@ -2,7 +2,7 @@ package soidc.jwt
 
 import soidc.jwt.JwtError.DecodeError
 import soidc.jwt.RegisteredParameterName as P
-import soidc.jwt.json.{FromJson, JsonValue, ToJson}
+import soidc.jwt.codec.{FromJson, JsonValue, ToJson}
 
 final case class JoseHeader private (
     algorithm: Option[Algorithm],

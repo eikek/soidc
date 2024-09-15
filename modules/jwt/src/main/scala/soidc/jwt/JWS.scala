@@ -1,8 +1,8 @@
 package soidc.jwt
 
 import scodec.bits.ByteVector
-import soidc.jwt.json.JsonDecoder
-import soidc.jwt.json.JsonEncoder
+import soidc.jwt.codec.ByteDecoder
+import soidc.jwt.codec.ByteEncoder
 
 /** A JSON Web Signature.
   *
@@ -35,7 +35,7 @@ final case class JWS(
   def unsafeSignWith(key: JWK): JWS =
     signWith(key).fold(throw _, identity)
 
-  def decode[H: JsonDecoder, C: JsonDecoder]
+  def decode[H: ByteDecoder, C: ByteDecoder]
       : Either[JwtError.DecodeError, JWSDecoded[H, C]] =
     for
       h <- header.as[H]
@@ -48,8 +48,8 @@ final case class JWS(
 object JWS:
 
   def unsigned[H, C](header: H, claims: C)(using
-      he: JsonEncoder[H],
-      ce: JsonEncoder[C]
+      he: ByteEncoder[H],
+      ce: ByteEncoder[C]
   ): JWS =
     JWS(
       Base64String.encode(he.encode(header)),
@@ -58,16 +58,16 @@ object JWS:
     )
 
   def signed[H, C](header: H, claims: C, key: JWK)(using
-      JsonEncoder[H],
-      JsonEncoder[C]
+      ByteEncoder[H],
+      ByteEncoder[C]
   ): Either[JwtError.SignError, JWS] =
     val raw = unsigned(header, claims)
     val sig = Sign.signWith(raw.payload.toArray, key)
     sig.map(bv => raw.withSignature(Base64String.encode(bv)))
 
   def unsafeSigned[H, C](header: H, claims: C, key: JWK)(using
-      JsonEncoder[H],
-      JsonEncoder[C]
+      ByteEncoder[H],
+      ByteEncoder[C]
   ): JWS =
     signed(header, claims, key).fold(throw _, identity)
 

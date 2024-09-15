@@ -1,4 +1,4 @@
-package soidc.jwt.json
+package soidc.jwt.codec
 
 trait ToJson[A]:
   self =>

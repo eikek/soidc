@@ -5,7 +5,7 @@ import pdi.jwt.JwtAlgorithm
 import pdi.jwt.JwtUtils
 import scodec.bits.{ByteVector, hex}
 import soidc.jwt.JwtError.DecodeError
-import soidc.jwt.json.JsonDecoder
+import soidc.jwt.codec.ByteDecoder
 
 class JWSTest extends FunSuite with Syntax:
 
@@ -57,7 +57,7 @@ class JWSTest extends FunSuite with Syntax:
 
   test("decode value"):
     val header = JoseHeader.empty.withAlgorithm(Algorithm.HS256)
-    given JsonDecoder[JoseHeader] = JsonDecoder.instance(bv =>
+    given ByteDecoder[JoseHeader] = ByteDecoder.instance(bv =>
       Either.cond(
         bv == ByteVector.fromValidBase64("eyJ0eXAiOiJKV1QiLA0KICJhbGciOiJIUzI1NiJ9"),
         header,

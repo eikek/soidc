@@ -6,14 +6,14 @@ import cats.syntax.all.*
 import soidc.core.JwtValidator
 import soidc.core.JwtDecodingValidator.ValidateFailure
 import soidc.http4s.routes.JwtContext.*
-import soidc.jwt.json.JsonDecoder
+import soidc.jwt.codec.ByteDecoder
 import org.http4s.server.AuthMiddleware
 import org.http4s.*
 import org.http4s.headers.Location
 
 /** Creates [[org.http4s.server.AuthMiddleware]]s */
 object JwtAuthMiddleware:
-  def builder[F[_]: Monad, H, C](using JsonDecoder[H], JsonDecoder[C]): Builder[F, H, C] =
+  def builder[F[_]: Monad, H, C](using ByteDecoder[H], ByteDecoder[C]): Builder[F, H, C] =
     Builder(JwtAuth.builder[F, H, C])
 
   def secured[F[_]: Monad, H, C](
@@ -45,7 +45,7 @@ object JwtAuthMiddleware:
 
   final case class Builder[F[_], H, C](
       authBuilder: JwtAuth.Builder[F, H, C]
-  )(using JsonDecoder[H], JsonDecoder[C], Monad[F]) {
+  )(using ByteDecoder[H], ByteDecoder[C], Monad[F]) {
     lazy val secured: AuthMiddleware[F, Authenticated[H, C]] =
       JwtAuthMiddleware.secured(authBuilder.secured)
 

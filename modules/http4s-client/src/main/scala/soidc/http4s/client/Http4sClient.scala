@@ -11,15 +11,15 @@ import org.http4s.ember.client.EmberClientBuilder
 import scodec.bits.ByteVector
 import soidc.core.HttpClient
 import soidc.jwt.Uri
-import soidc.jwt.json.JsonDecoder
+import soidc.jwt.codec.ByteDecoder
 
 final class Http4sClient[F[_]: Sync](client: Client[F]) extends HttpClient[F]:
 
-  def get[A](url: Uri)(using JsonDecoder[A]): F[A] =
+  def get[A](url: Uri)(using ByteDecoder[A]): F[A] =
     client.expect(url.value)
 
-  given [A](using JsonDecoder[A]): EntityDecoder[F, A] =
-    val decoder = summon[JsonDecoder[A]]
+  given [A](using ByteDecoder[A]): EntityDecoder[F, A] =
+    val decoder = summon[ByteDecoder[A]]
     EntityDecoder.decodeBy(MediaType.application.json) { entity =>
       EitherT(entity.body.compile.to(ByteVector).map(bv => decoder.decode(bv)))
         .leftMap(err => MalformedMessageBodyFailure("Cannot decode response", Some(err)))

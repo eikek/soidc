@@ -1,8 +1,8 @@
-package soidc.jwt.json
+package soidc.jwt.codec
 
 import soidc.jwt.JwtError.DecodeError
 import soidc.jwt.ParameterName
-import soidc.jwt.json.ToJson.syntax.*
+import soidc.jwt.codec.ToJson.syntax.*
 
 /** Simplified json ast for use with this library */
 sealed trait JsonValue:

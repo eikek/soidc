@@ -1,6 +1,6 @@
 package soidc.jwt
 
-import soidc.jwt.json.*
+import soidc.jwt.codec.*
 
 enum KeyUse(val name: String):
   case Sign extends KeyUse("sig")

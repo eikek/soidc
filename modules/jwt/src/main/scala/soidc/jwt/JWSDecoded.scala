@@ -4,7 +4,7 @@ import java.time.Instant
 
 import scala.concurrent.duration.Duration
 
-import soidc.jwt.json.*
+import soidc.jwt.codec.*
 
 final case class JWSDecoded[H, C](
     jws: JWS,
@@ -34,8 +34,8 @@ object JWSDecoded:
   def fromString[H, C](
       token: String
   )(using
-      JsonDecoder[H],
-      JsonDecoder[C]
+      ByteDecoder[H],
+      ByteDecoder[C]
   ): Either[JwtError.DecodeError, JWSDecoded[H, C]] =
     for
       jws <- JWS.fromString(token).left.map(JwtError.DecodeError(_))
@@ -45,18 +45,18 @@ object JWSDecoded:
 
   def unsafeFromString[H, C](
       token: String
-  )(using JsonDecoder[H], JsonDecoder[C]): JWSDecoded[H, C] =
+  )(using ByteDecoder[H], ByteDecoder[C]): JWSDecoded[H, C] =
     fromString[H, C](token).fold(throw _, identity)
 
   def createUnsigned[H, C](header: H, claims: C)(using
-      JsonEncoder[H],
-      JsonEncoder[C]
+      ByteEncoder[H],
+      ByteEncoder[C]
   ): JWSDecoded[H, C] =
     JWSDecoded(JWS.unsigned(header, claims), header, claims)
 
   def createSigned[H, C](header: H, claims: C, key: JWK)(using
-      JsonEncoder[H],
-      JsonEncoder[C]
+      ByteEncoder[H],
+      ByteEncoder[C]
   ): Either[JwtError.SignError, JWSDecoded[H, C]] =
     JWS.signed(header, claims, key).map(jws => JWSDecoded(jws, header, claims))
 

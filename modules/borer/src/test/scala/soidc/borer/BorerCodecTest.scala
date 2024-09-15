@@ -6,8 +6,8 @@ import munit.*
 import scodec.bits.ByteVector
 import soidc.borer.given
 import soidc.jwt.*
-import soidc.jwt.json.JsonValue
-import soidc.jwt.json.syntax.*
+import soidc.jwt.codec.JsonValue
+import soidc.jwt.codec.syntax.*
 
 class BorerCodecTest extends FunSuite:
 

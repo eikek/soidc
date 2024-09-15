@@ -1,14 +1,14 @@
 package soidc.core
 
 import cats.syntax.all.*
-import soidc.jwt.json.JsonDecoder
+import soidc.jwt.codec.ByteDecoder
 import JwtDecodingValidator.*
 import soidc.jwt.*
 import cats.Applicative
 
 trait JwtDecodingValidator[F[_], H, C]:
 
-  def decodeValidate(token: String)(using JsonDecoder[H], JsonDecoder[C]): F[Result[H, C]]
+  def decodeValidate(token: String)(using ByteDecoder[H], ByteDecoder[C]): F[Result[H, C]]
 
 object JwtDecodingValidator:
 
@@ -27,7 +27,7 @@ object JwtDecodingValidator:
     new JwtDecodingValidator[F, H, C] {
       def decodeValidate(
           token: String
-      )(using JsonDecoder[H], JsonDecoder[C]): F[Result[H, C]] =
+      )(using ByteDecoder[H], ByteDecoder[C]): F[Result[H, C]] =
         JWSDecoded.fromString[H, C](token) match
           case Left(err) => Result.Failure(ValidateFailure.DecodeFailure(err)).pure[F]
           case Right(jwt) =>

@@ -1,6 +1,6 @@
 package soidc.jwt
 
-import soidc.jwt.json.*
+import soidc.jwt.codec.*
 
 // https://datatracker.ietf.org/doc/html/rfc7518#section-6.2.1.1
 enum Curve(val nameShort: String, val name: String, val oid: String):

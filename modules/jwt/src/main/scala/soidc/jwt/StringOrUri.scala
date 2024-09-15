@@ -1,6 +1,6 @@
 package soidc.jwt
 
-import soidc.jwt.json.{FromJson, ToJson}
+import soidc.jwt.codec.{FromJson, ToJson}
 
 // https://datatracker.ietf.org/doc/html/rfc7519#page-5
 opaque type StringOrUri = String
