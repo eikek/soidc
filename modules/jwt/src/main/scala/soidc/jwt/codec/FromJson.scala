@@ -51,7 +51,9 @@ object FromJson:
   given FromJson[Boolean] = bool(Right(_))
 
   given FromJson[Long] = FromJson[BigDecimal].map(_.toLong)
+  given FromJson[Int] = FromJson[BigDecimal].map(_.toInt)
   given FromJson[Double] = FromJson[BigDecimal].map(_.toDouble)
+  given FromJson[Float] = FromJson[BigDecimal].map(_.toFloat)
 
   given [A](using f: FromJson[A]): FromJson[List[A]] =
     instance {

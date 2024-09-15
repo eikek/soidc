@@ -2,9 +2,11 @@ package soidc.jwt
 
 import java.security.KeyFactory
 import java.security.interfaces.RSAPrivateCrtKey
+import java.security.interfaces.RSAPublicKey
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.RSAPrivateKeySpec
 import java.security.spec.RSAPublicKeySpec
+import java.security.spec.X509EncodedKeySpec
 import java.security.{PrivateKey, PublicKey}
 
 import scala.util.Try
@@ -81,6 +83,33 @@ private[jwt] object RsaKey:
         .withValue(Param.E, Base64String.encode(ppk.getPublicExponent()))
         .withValue(Param.P, Base64String.encode(ppk.getPrimeP()))
         .withValue(Param.Q, Base64String.encode(ppk.getPrimeQ()))
+    yield jwk
+
+  def fromPkcs8PubKey(key: String, alg: Algorithm): Either[JwtError, JWK] =
+    for
+      _ <- signAlgoName(alg)
+      b64 <- ByteVector
+        .fromBase64Descriptive(
+          key
+            .replace("-----BEGIN PUBLIC KEY-----\n", "")
+            .replace("-----END PUBLIC KEY-----", ""),
+          Alphabets.Base64
+        )
+        .left
+        .map(err => DecodeError(err))
+      kf <- Try(KeyFactory.getInstance("RSA")).toEither.left
+        .map(JwtError.SecurityApiError.apply)
+
+      kspec = X509EncodedKeySpec(b64.toArray)
+
+      ppk <- Try(kf.generatePublic(kspec)).toEither.left
+        .map(JwtError.SecurityApiError.apply)
+        .map(_.asInstanceOf[RSAPublicKey])
+
+      jwk = JWK(KeyType.RSA)
+        .withAlgorithm(alg)
+        .withValue(Param.N, Base64String.encode(ppk.getModulus()))
+        .withValue(Param.E, Base64String.encode(ppk.getPublicExponent()))
     yield jwk
 
   private[jwt] def signAlgoName(

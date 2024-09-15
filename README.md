@@ -49,6 +49,7 @@ Algorithm.values.toList
 // )
 ```
 
+A JWK can be created from a pkcs8 string or its JSON representation.
 
 #### Example: Verify HMAC signature
 
@@ -222,23 +223,24 @@ The `core` module provides a composable `JwtValidator`. It is based on
 the `jwt` module and cats-effect. A `JwtValidator` defines a way to
 validate a token (given as a `JWSDecoded` value). A `JwtValidator`
 either returns whether the input is valid, or it may choose to not
-process the input. This allows to chain multiple validators each for a
-specific JWT (like per issuer).
+process the input. This allows to chain multiple validators for a
+specific use cases or stages (e.g. validating one issuer differently
+than another).
 
 #### `OpenIdJwtValidator`
 
 The main implementation is the `OpenIdJwtValidator`. During
 validation, it will fetch the `.well-known/openid-configuration` from
-a provider (obtained via the issuer claim) to get the `jwks` for
-verifying the signature using the public key from the providers JWK
-set. This requires to list a set of allowed issuers via its
-configuration!
+a provider (obtained via the issuer claim) to get the public key from
+the `jwks` of that provider to verify the signature of the jwt. This
+should be restricted to list a set of allowed/trusted issuers.
 
-If validation fails for the first time, a new `JWKSet` is tried to
-fetch and then tried again (keys could have been rotated).
+If validation fails for the first time, a new `JWKSet` is fetched and
+verification is tried again for a second and last time (keys could
+have been rotated).
 
-Instead of obtaining the openid-config uri from the issuer in the jwt,
-the uri can also be given at construction time.
+Instead of obtaining the openid-config uri dynamically from the issuer
+in the jwt, the uri can also be given at construction time.
 
 The example demonstrates the use with a dummy http-client, the
 `http4s-client` module provides an implementation based on http4s.
@@ -349,6 +351,8 @@ validator.validate(otherJws).unsafeRunSync() == None
 This module provides routes for doing an OpenID code flow and a
 middleware for verifying JWT tokens.
 
+#### Authenticated Requests
+
 The `JwtAuth` object can be used to create code extracting and
 validating JWTs for http4s `AuthMiddleware`. Just define routes
 requiring a specific `JwtContext` and apply it to the
@@ -394,13 +398,13 @@ val testRoutes = AuthedRoutes.of[Context, IO] {
     Ok(context.claims.subject.map(_.value).getOrElse(""))
 }
 // testRoutes: Kleisli[[_$10 >: Nothing <: Any] =>> OptionT[[A >: Nothing <: Any] =>> IO[A], _$10], ContextRequest[[A >: Nothing <: Any] =>> IO[A], Context], Response[[A >: Nothing <: Any] =>> IO[A]]] = Kleisli(
-//   run = org.http4s.AuthedRoutes$$$Lambda$3582/0x0000000801a86b70@11ece41c
+//   run = org.http4s.AuthedRoutes$$$Lambda$3585/0x0000000801a88000@163d5c24
 // )
 
 // apply authentication code to testRoutes
 val httpApp = withAuth(testRoutes).orNotFound
 // httpApp: Kleisli[[A >: Nothing <: Any] =>> IO[A], Request[[A >: Nothing <: Any] =>> IO[A]], Response[[A >: Nothing <: Any] =>> IO[A]]] = Kleisli(
-//   run = org.http4s.syntax.KleisliResponseOps$$Lambda$3584/0x0000000801a88210@313fdff4
+//   run = org.http4s.syntax.KleisliResponseOps$$Lambda$3587/0x0000000801a89650@1ea33662
 // )
 
 // create sample request
@@ -426,7 +430,7 @@ val req = Request[IO](uri = uri"/test").withHeaders(
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Authorization: Bearer e30.eyJzdWIiOiJtZSJ9),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@41d72593
+//    = org.typelevel.vault.Vault@63f410d0
 // )
 
 val res = httpApp.run(req).unsafeRunSync()
@@ -435,10 +439,13 @@ val res = httpApp.run(req).unsafeRunSync()
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Content-Type: text/plain; charset=UTF-8, Content-Length: 2),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@72577420
+//    = org.typelevel.vault.Vault@404a85b1
 // )
 ```
 
-## Links / Literature
+## TODO
 
-- Jwa (JSON Web Algorithms) https://datatracker.ietf.org/doc/html/rfc7518
+- `JWKGenerate`
+- rsa from pkcs8 is for private and public
+- read private and public keys from pkcs8
+- code flow, direct grant

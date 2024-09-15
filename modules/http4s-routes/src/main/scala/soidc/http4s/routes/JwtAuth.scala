@@ -4,13 +4,15 @@ import cats.Monad
 import cats.data.{Kleisli, OptionT}
 import cats.syntax.all.*
 
-import soidc.core.JwtValidator
 import soidc.core.JwtDecodingValidator.{Result, ValidateFailure}
+import soidc.core.JwtValidator
 import soidc.http4s.routes.JwtContext.*
 import soidc.jwt.JWSDecoded
 import soidc.jwt.codec.ByteDecoder
 
-/** Functions to obtain an `AuthedRequest` to use with http4s `AuthMiddleware`. */
+/** Functions to obtain an `AuthedRequest` (a valid token) to use with http4s
+  * `AuthMiddleware`.
+  */
 object JwtAuth:
   def builder[F[_]: Monad, H, C](using ByteDecoder[H], ByteDecoder[C]): Builder[F, H, C] =
     Builder(
@@ -42,7 +44,7 @@ object JwtAuth:
   ): JwtAuth[F, MaybeAuthenticated[H, C]] =
     Kleisli { req =>
       getToken(req) match
-        case None => OptionT.none[F, MaybeAuthenticated[H, C]]
+        case None => OptionT.some[F](MaybeAuthenticated(None))
         case Some(token) =>
           OptionT(validateToken[F, H, C](validator, token, onInvalidToken))
             .map(Authenticated.apply)

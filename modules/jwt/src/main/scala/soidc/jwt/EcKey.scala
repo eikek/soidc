@@ -61,7 +61,7 @@ private object EcKey:
       ppk <- wrapSecurityApi(kf.generatePrivate(pspec))
     yield ppk
 
-  def fromPkcs8PrivateKey(
+  def fromPkcs8KeyPair(
       privateKey: String,
       publicKey: String,
       alg: Algorithm
@@ -69,11 +69,22 @@ private object EcKey:
     for
       _ <- signAlgoName(alg)
 
-      ppkey <- readEcPrivateKey(privateKey)
-      plkey <- readEcPubliceKey(publicKey)
+      jwkpp <- fromPkcs8PrivateKey(privateKey, alg)
+      jwkpl <- fromPkcs8PubKey(publicKey, alg)
 
-      x = plkey.getW().getAffineX()
-      y = plkey.getW().getAffineY()
+      d <- jwkpp.values.requireAs[Base64String](ECParam.D)
+
+      jwk = jwkpl.withValue(ECParam.D, d)
+    yield jwk
+
+  def fromPkcs8PrivateKey(
+      privateKey: String,
+      alg: Algorithm
+  ): Either[JwtError, JWK] =
+    for
+      _ <- signAlgoName(alg)
+      ppkey <- readEcPrivateKey(privateKey)
+
       curveOid = {
         val params = AlgorithmParameters.getInstance("EC")
         params.init(ppkey.getParams())
@@ -85,6 +96,27 @@ private object EcKey:
       jwk = JWK(KeyType.EC)
         .withAlgorithm(alg)
         .withValue(ECParam.D, Base64String.encode(ppkey.getS()))
+        .withValue(ECParam.Crv, crv)
+    yield jwk
+
+  def fromPkcs8PubKey(
+      publicKey: String,
+      alg: Algorithm
+  ): Either[JwtError, JWK] =
+    for
+      _ <- signAlgoName(alg)
+      plkey <- readEcPubliceKey(publicKey)
+      x = plkey.getW().getAffineX()
+      y = plkey.getW().getAffineY()
+      curveOid = {
+        val params = AlgorithmParameters.getInstance("EC")
+        params.init(plkey.getParams())
+        params.getParameterSpec(classOf[ECGenParameterSpec]).getName()
+      }
+      crv <- Curve.fromString(curveOid).left.map(DecodeError(_))
+
+      jwk = JWK(KeyType.EC)
+        .withAlgorithm(alg)
         .withValue(
           ECParam.X,
           Base64String.encode(x)

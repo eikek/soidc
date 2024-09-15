@@ -145,7 +145,7 @@ val http4sRoutes = project
     libraryDependencies ++=
       (Dependencies.http4sDsl ++ Dependencies.http4sEmberServer).map(_ % Test)
   )
-  .dependsOn(core % "compile->compile,test->test", borer % "test->test")
+  .dependsOn(core % "compile->compile;test->test", borer % "test->test")
 
 val updateReadme = inputKey[Unit]("Update readme")
 lazy val readme = project

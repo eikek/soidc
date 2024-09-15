@@ -38,6 +38,7 @@ import soidc.jwt.*
 Algorithm.values.toList
 ```
 
+A JWK can be created from a pkcs8 string or its JSON representation.
 
 #### Example: Verify HMAC signature
 
@@ -111,23 +112,24 @@ The `core` module provides a composable `JwtValidator`. It is based on
 the `jwt` module and cats-effect. A `JwtValidator` defines a way to
 validate a token (given as a `JWSDecoded` value). A `JwtValidator`
 either returns whether the input is valid, or it may choose to not
-process the input. This allows to chain multiple validators each for a
-specific JWT (like per issuer).
+process the input. This allows to chain multiple validators for a
+specific use cases or stages (e.g. validating one issuer differently
+than another).
 
 #### `OpenIdJwtValidator`
 
 The main implementation is the `OpenIdJwtValidator`. During
 validation, it will fetch the `.well-known/openid-configuration` from
-a provider (obtained via the issuer claim) to get the `jwks` for
-verifying the signature using the public key from the providers JWK
-set. This requires to list a set of allowed issuers via its
-configuration!
+a provider (obtained via the issuer claim) to get the public key from
+the `jwks` of that provider to verify the signature of the jwt. This
+should be restricted to list a set of allowed/trusted issuers.
 
-If validation fails for the first time, a new `JWKSet` is tried to
-fetch and then tried again (keys could have been rotated).
+If validation fails for the first time, a new `JWKSet` is fetched and
+verification is tried again for a second and last time (keys could
+have been rotated).
 
-Instead of obtaining the openid-config uri from the issuer in the jwt,
-the uri can also be given at construction time.
+Instead of obtaining the openid-config uri dynamically from the issuer
+in the jwt, the uri can also be given at construction time.
 
 The example demonstrates the use with a dummy http-client, the
 `http4s-client` module provides an implementation based on http4s.
@@ -199,6 +201,8 @@ validator.validate(otherJws).unsafeRunSync() == None
 This module provides routes for doing an OpenID code flow and a
 middleware for verifying JWT tokens.
 
+#### Authenticated Requests
+
 The `JwtAuth` object can be used to create code extracting and
 validating JWTs for http4s `AuthMiddleware`. Just define routes
 requiring a specific `JwtContext` and apply it to the
@@ -257,6 +261,9 @@ val req = Request[IO](uri = uri"/test").withHeaders(
 val res = httpApp.run(req).unsafeRunSync()
 ```
 
-## Links / Literature
+## TODO
 
-- Jwa (JSON Web Algorithms) https://datatracker.ietf.org/doc/html/rfc7518
+- `JWKGenerate`
+- rsa from pkcs8 is for private and public
+- read private and public keys from pkcs8
+- code flow, direct grant

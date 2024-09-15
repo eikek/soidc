@@ -2,6 +2,8 @@ package soidc.jwt
 
 import java.time.Instant
 
+import scala.concurrent.duration.FiniteDuration
+
 import soidc.jwt.codec.{FromJson, ToJson}
 
 opaque type NumericDate = Long
@@ -20,3 +22,5 @@ object NumericDate:
     def asInstant: Instant =
       Instant.ofEpochSecond(self)
     def toSeconds: Long = self
+    def +(duration: FiniteDuration): NumericDate =
+      self + duration.toSeconds

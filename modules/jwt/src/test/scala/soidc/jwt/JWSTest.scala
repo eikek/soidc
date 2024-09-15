@@ -138,7 +138,7 @@ class JWSTest extends FunSuite with Syntax:
     )
     assert(jws.verifySignature(data.ecKey).value)
 
-  test("imported rsa key"):
+  test("imported rsa private key"):
     val jwk = JWK.rsaPrivate(KeyData.rsaPem, Algorithm.RS256).value
     val jws = JWS(
       // {"typ":"JWT","alg":"RS256"}
@@ -148,8 +148,20 @@ class JWSTest extends FunSuite with Syntax:
     ).signWith(jwk).value
     assert(jws.verifySignature(jwk).value)
 
+  test("imported rsa public key"):
+    val jwk = JWK.rsaPrivate(KeyData.rsaPem, Algorithm.RS256).value
+    val jws = JWS(
+      // {"typ":"JWT","alg":"RS256"}
+      Base64String.unsafeOf("eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9"),
+      // {"iss":"me myself"}
+      Base64String.unsafeOf("eyJpc3MiOiJtZSBteXNlbGYifQ")
+    ).signWith(jwk).value
+    assert(jws.verifySignature(jwk).value)
+    val pk = JWK.rsaKey(KeyData.rsaPub, Algorithm.RS256).value
+    assert(jws.verifySignature(pk).value)
+
   test("imported ec key"):
-    val jwk = JWK.ecPrivate(KeyData.ecPrivate, KeyData.ecPublic, Algorithm.ES256).value
+    val jwk = JWK.ecKeyPair(KeyData.ecPrivate, KeyData.ecPublic, Algorithm.ES256).value
     val jws = JWS(
       // {"typ":"JWT","alg":"ES256"}
       Base64String.unsafeOf("eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9"),

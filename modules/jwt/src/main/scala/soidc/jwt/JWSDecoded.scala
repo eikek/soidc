@@ -13,6 +13,26 @@ final case class JWSDecoded[H, C](
 ):
   export jws.{compact, payload, verifySignature}
 
+  def updateClaims(key: JWK, f: C => C)(using
+      ByteEncoder[H],
+      ByteEncoder[C]
+  ): Either[JwtError.SignError, JWSDecoded[H, C]] =
+    val c = f(claims)
+    JWSDecoded.createSigned(header, c, key)
+
+  def withClaims(key: JWK, c: C)(using
+      ByteEncoder[H],
+      ByteEncoder[C]
+  ): Either[JwtError.SignError, JWSDecoded[H, C]] =
+    JWSDecoded.createSigned(header, c, key)
+
+  def updateHeader(key: JWK, f: H => H)(using
+      ByteEncoder[H],
+      ByteEncoder[C]
+  ): Either[JwtError.SignError, JWSDecoded[H, C]] =
+    val h = f(header)
+    JWSDecoded.createSigned(h, claims, key)
+
   def validate(key: JWK, currentTime: Instant, timingLeeway: Duration = Duration.Zero)(
       using
       StandardClaims[C],

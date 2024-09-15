@@ -72,12 +72,31 @@ object JWK:
   def rsaPrivate(pkcs8PrivateKey: String, alg: Algorithm): Either[JwtError, JWK] =
     RsaKey.fromPkcs8PrivateKey(pkcs8PrivateKey, alg)
 
+  def rsaPublic(pkcs8: String, alg: Algorithm): Either[JwtError, JWK] =
+    RsaKey.fromPkcs8PubKey(pkcs8, alg)
+
+  def rsaKey(pkcs8: String, alg: Algorithm): Either[JwtError, JWK] =
+    if (pkcs8.contains("BEGIN PRIVATE KEY")) rsaPrivate(pkcs8, alg)
+    else rsaPublic(pkcs8, alg)
+
   def ecPrivate(
       pkcs8PrivateKey: String,
+      alg: Algorithm
+  ): Either[JwtError, JWK] =
+    EcKey.fromPkcs8PrivateKey(pkcs8PrivateKey, alg)
+
+  def ecPublic(
       pkcs8PublicKey: String,
       alg: Algorithm
   ): Either[JwtError, JWK] =
-    EcKey.fromPkcs8PrivateKey(pkcs8PrivateKey, pkcs8PublicKey, alg)
+    EcKey.fromPkcs8PubKey(pkcs8PublicKey, alg)
+
+  def ecKey(pkcs8: String, alg: Algorithm): Either[JwtError, JWK] =
+    if (pkcs8.contains("BEGIN PRIVATE KEY")) ecPrivate(pkcs8, alg)
+    else ecPublic(pkcs8, alg)
+
+  def ecKeyPair(priv: String, pub: String, alg: Algorithm): Either[JwtError, JWK] =
+    EcKey.fromPkcs8KeyPair(priv, pub, alg)
 
   def fromObj(values: JsonValue.Obj): Either[DecodeError, JWK] =
     for

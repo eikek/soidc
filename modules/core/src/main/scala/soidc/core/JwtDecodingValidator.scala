@@ -1,10 +1,11 @@
 package soidc.core
 
-import cats.syntax.all.*
-import soidc.jwt.codec.ByteDecoder
-import JwtDecodingValidator.*
-import soidc.jwt.*
 import cats.Applicative
+import cats.syntax.all.*
+
+import soidc.core.JwtDecodingValidator.*
+import soidc.jwt.*
+import soidc.jwt.codec.ByteDecoder
 
 trait JwtDecodingValidator[F[_], H, C]:
 

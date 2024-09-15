@@ -44,3 +44,14 @@ object KeyData:
                  |C0PrOt9BO52soq5CCIEjV1qb9fpOG8mfxtUUu6WeP1pcNdZI6/Lx3eDL0wOurBLI
                  |Gaz7tha0AjaXukBIPm8JcqM=
                  |-----END PRIVATE KEY-----""".stripMargin
+
+  // openssl rsa -in rsa.priv.pem -pubout
+  val rsaPub = """-----BEGIN PUBLIC KEY-----
+                 |MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA814iWdxJ4Nnbb91WrjTK
+                 |usfegZpOvZiamqQA1VhWYtbykZ/wzQli3QhMsUfJTcDucFkCop3y2TdTGivLTz/i
+                 |OeUuk5D7ULJRx4jf2HoW6X/yripZ1SNU39SDclVOS8MDNScDP1MomdfR0vEv7sU3
+                 |NaF7C8sPFFEwMB4F0zCMHgHZZiLC+Z7JEWAMy0ukIyW1042oQlSe+XzacK0l1mZi
+                 |sI5rHNtIA9YhaxpH7B+mbedHslPJph6POGYTxm+6BfVzGAkjwK2cvGEmUGjUwakN
+                 |BGorzfCspGUYyrmclaAU7IcMG954f7uSwfadGuUHi2Rw4x6QzJogjBMF3XPpFQ1J
+                 |nwIDAQAB
+                 |-----END PUBLIC KEY-----""".stripMargin
