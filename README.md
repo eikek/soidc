@@ -217,7 +217,7 @@ jwt.validate(jwk, tooLate).isValid
 ### core
 
 The `core` module provides a composable `JwtValidator`. It is based on
-the `jwt` module cats-effect. A `JwtValidator` defines a way to
+the `jwt` module and cats-effect. A `JwtValidator` defines a way to
 validate a token (given as a `JWSDecoded` value). A `JwtValidator`
 either returns whether the input is valid, or it may choose to not
 process the input. This allows to chain multiple validators each for a
@@ -243,6 +243,7 @@ The example demonstrates the use with a dummy http-client, the
 When using this config, you should restrict this validator to a
 trusted set of issuer urls as done with `.forIssuer` in the example.
 
+First some setup code:
 ```scala
 import soidc.jwt.*
 import soidc.jwt.json.syntax.*
@@ -266,59 +267,10 @@ extension (self: String)
   def keyId = KeyId.unsafeFromString(self)
 
 val issuer = "http://issuer".uri
-// issuer: Uri = "http://issuer"
 val (jws, jwk) = createJWS(SimpleClaims.empty.withIssuer(StringOrUri(issuer.value)))
-// jws: JWSDecoded[JoseHeader, SimpleClaims] = JWSDecoded(
-//   jws = JWS(
-//     header = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImtpZCI6ImtleTEifQ",
-//     claims = "eyJpc3MiOiJodHRwOi8vaXNzdWVyIn0",
-//     signature = Some(value = "SAMCVoxRnU6EdJUDhFrK00WNIIF65Il0GfwL93IBFN8")
-//   ),
-//   header = JoseHeader(
-//     algorithm = Some(value = HS256),
-//     keyId = Some(value = "key1"),
-//     contentType = None,
-//     issuer = None,
-//     subject = None,
-//     audience = List(),
-//     values = Obj(
-//       value = Map(
-//         "typ" -> Str(value = "JWT"),
-//         "alg" -> Str(value = "HS256"),
-//         "kid" -> Str(value = "key1")
-//       )
-//     )
-//   ),
-//   claims = SimpleClaims(
-//     issuer = Some(value = "http://issuer"),
-//     subject = None,
-//     audience = List(),
-//     expirationTime = None,
-//     notBefore = None,
-//     jwtId = None,
-//     values = Obj(value = Map("iss" -> Str(value = "http://issuer")))
-//   )
-// )
-// jwk: JWK = JWK(
-//   keyType = OCT,
-//   keyUse = None,
-//   keyOperation = List(),
-//   keyId = Some(value = "key1"),
-//   algorithm = Some(value = HS256),
-//   values = Obj(
-//     value = Map(
-//       "k" -> Str(value = "aGVsbG8"),
-//       "alg" -> Str(value = "HS256"),
-//       "kid" -> Str(value = "key1")
-//     )
-//   )
-// )
 val jwksUri = "http://jwkb".uri
-// jwksUri: Uri = "http://jwkb"
 val oidUri = "http://issuer/.well-known/openid-configuration".uri
-// oidUri: Uri = "http://issuer/.well-known/openid-configuration"
 val dummyUri = "dummy:".uri
-// dummyUri: Uri = "dummy:"
 val client = HttpClient.fromMap[IO](
   Map(
     jwksUri -> JWKSet(jwk).toJsonValue,
@@ -331,10 +283,14 @@ val client = HttpClient.fromMap[IO](
     ).toJsonValue
   )
 )
-// client: HttpClient[[A >: Nothing <: Any] =>> IO[A]] = soidc.core.HttpClient$$anon$1@7c6c8301
+```
 
-// create validator with default config that looks up an openid-configuration
-// by appending '.well-known/openid-configuration' to the issuer url of the jwt
+Create a validator with the default config that looks up an open-id
+configuration by appending the `.well-known/openid-configuration` path
+to the value of the `issuer` property in the JWT. For this it is
+important to restrict the issuers to some trusted values.
+
+```scala
 val cfg = OpenIdJwtValidator.Config()
 // cfg: Config = Config(
 //   minRequestDelay = 1 minute,
@@ -345,7 +301,7 @@ val validator = JwtValidator
   .openId[IO, JoseHeader, SimpleClaims](cfg, client)
   .map(_.forIssuer(_.startsWith("http://issuer"))) // restrict this to the a known issuer
   .unsafeRunSync()
-// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.JwtValidator$$anon$1@32147231
+// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.JwtValidator$$anon$1@52e04bbf
 
 validator.validate(jws).unsafeRunSync() == Some(Validate.Result.success)
 // res9: Boolean = true
@@ -404,29 +360,19 @@ import org.http4s.server.AuthMiddleware
 
 import soidc.borer.given
 import soidc.core.JwtValidator
-import soidc.http4s.routes.JwtAuth
+import soidc.http4s.routes.JwtAuthMiddleware
 import soidc.http4s.routes.JwtContext.*
 import soidc.jwt.*
-
-type Context = Authenticated[JoseHeader, SimpleClaims]
-
-// your routes requiring authenticated requests
-val testRoutes = AuthedRoutes.of[Context, IO] {
-  case ContextRequest(context, GET -> Root / "test") =>
-    Ok(context.token.claims.subject.map(_.value).getOrElse(""))
-}
 
 // pick a validator, here just for testing
 val validator = JwtValidator.alwaysValid[IO, JoseHeader, SimpleClaims]
 
 // create the middleware that does token validation
-val withAuth = AuthMiddleware(
-  JwtAuth.builder[IO, JoseHeader, SimpleClaims] // capture types here
-    .withBearerToken  // get the token from "Authorization Bearer …"
-    .withValidator(validator) // use this validator
-    .withOnInvalidToken(IO.println) // print to stdout in case of error
-    .secured  // valid token must exist and, use .optional to allow non-authenticated requests
-)
+val withAuth = JwtAuthMiddleware.builder[IO, JoseHeader, SimpleClaims] // capture types here
+  .withBearerToken  // get the token from "Authorization Bearer …"
+  .withValidator(validator) // use this validator
+  .withOnInvalidToken(IO.println) // print to stdout in case of error
+  .secured  // valid token must exist, use .optional to allow non-authenticated requests
 ```
 
 Now, `withAuth` can be used to turn the `testRoutes` into a normal
@@ -438,10 +384,21 @@ import cats.effect.unsafe.implicits.*
 import org.http4s.implicits.*
 import org.http4s.headers.Authorization
 
+type Context = Authenticated[JoseHeader, SimpleClaims]
+
+// your routes requiring authenticated requests
+val testRoutes = AuthedRoutes.of[Context, IO] {
+  case ContextRequest(context, GET -> Root / "test") =>
+    Ok(context.claims.subject.map(_.value).getOrElse(""))
+}
+// testRoutes: Kleisli[[_$10 >: Nothing <: Any] =>> OptionT[[A >: Nothing <: Any] =>> IO[A], _$10], ContextRequest[[A >: Nothing <: Any] =>> IO[A], Context], Response[[A >: Nothing <: Any] =>> IO[A]]] = Kleisli(
+//   run = org.http4s.AuthedRoutes$$$Lambda$3582/0x0000000801a860d0@4b078ff4
+// )
+
 // apply authentication code to testRoutes
 val httpApp = withAuth(testRoutes).orNotFound
 // httpApp: Kleisli[[A >: Nothing <: Any] =>> IO[A], Request[[A >: Nothing <: Any] =>> IO[A]], Response[[A >: Nothing <: Any] =>> IO[A]]] = Kleisli(
-//   run = org.http4s.syntax.KleisliResponseOps$$Lambda$3578/0x0000000801a85f00@348efe0
+//   run = org.http4s.syntax.KleisliResponseOps$$Lambda$3584/0x0000000801a87720@2b9d6a1e
 // )
 
 // create sample request
@@ -467,7 +424,7 @@ val req = Request[IO](uri = uri"/test").withHeaders(
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Authorization: Bearer e30.eyJzdWIiOiJtZSJ9),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@781e2388
+//    = org.typelevel.vault.Vault@71e21f48
 // )
 
 val res = httpApp.run(req).unsafeRunSync()
@@ -476,7 +433,7 @@ val res = httpApp.run(req).unsafeRunSync()
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Content-Type: text/plain; charset=UTF-8, Content-Length: 2),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@6114fc0f
+//    = org.typelevel.vault.Vault@41902ed
 // )
 ```
 

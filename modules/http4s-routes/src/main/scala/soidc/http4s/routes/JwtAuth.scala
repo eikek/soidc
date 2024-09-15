@@ -5,6 +5,7 @@ import cats.data.{Kleisli, OptionT}
 import cats.syntax.all.*
 
 import soidc.core.JwtValidator
+import soidc.core.JwtDecodingValidator.{Result, ValidateFailure}
 import soidc.http4s.routes.JwtContext.*
 import soidc.jwt.JWSDecoded
 import soidc.jwt.json.JsonDecoder
@@ -21,7 +22,7 @@ object JwtAuth:
   def secured[F[_]: Monad, H, C](
       getToken: GetToken[F],
       validator: JwtValidator[F, H, C],
-      onInvalidToken: Option[AuthError => F[Unit]] = None
+      onInvalidToken: Option[ValidateFailure => F[Unit]] = None
   )(using JsonDecoder[H], JsonDecoder[C]): JwtAuth[F, Authenticated[H, C]] =
     Kleisli { req =>
       getToken(req) match
@@ -34,7 +35,7 @@ object JwtAuth:
   def optional[F[_]: Monad, H, C](
       getToken: GetToken[F],
       validator: JwtValidator[F, H, C],
-      onInvalidToken: Option[AuthError => F[Unit]] = None
+      onInvalidToken: Option[ValidateFailure => F[Unit]] = None
   )(using
       JsonDecoder[H],
       JsonDecoder[C]
@@ -51,28 +52,18 @@ object JwtAuth:
   private def validateToken[F[_]: Monad, H, C](
       validator: JwtValidator[F, H, C],
       token: String,
-      onInvalidToken: Option[AuthError => F[Unit]]
+      onInvalidToken: Option[ValidateFailure => F[Unit]]
   )(using JsonDecoder[H], JsonDecoder[C]): F[Option[JWSDecoded[H, C]]] =
-    JWSDecoded.fromString[H, C](token) match
-      case Left(err) =>
-        OptionT
-          .fromOption(onInvalidToken)
-          .flatMapF(f => f(AuthError.Decode(err)).as(None))
-          .value
-      case Right(jwt) =>
-        validator.validate(jwt).flatMap {
-          case Some(r) if r.isValid => Some(jwt).pure[F]
-          case result =>
-            val err = result
-              .map(AuthError.InvalidToken.apply)
-              .getOrElse(AuthError.Unhandled)
-            OptionT.fromOption(onInvalidToken).flatMapF(f => f(err).as(None)).value
-        }
+    validator.toDecodingValidator.decodeValidate(token).flatMap {
+      case Result.Success(jwt) => jwt.some.pure[F]
+      case Result.Failure(err) =>
+        OptionT.fromOption(onInvalidToken).flatMapF(f => f(err).as(None)).value
+    }
 
   final case class Builder[F[_], H, C](
       validator: JwtValidator[F, H, C],
       getToken: GetToken[F],
-      onInvalidToken: Option[AuthError => F[Unit]]
+      onInvalidToken: Option[ValidateFailure => F[Unit]]
   )(using JsonDecoder[H], JsonDecoder[C], Monad[F]) {
     lazy val secured: JwtAuth[F, Authenticated[H, C]] =
       JwtAuth.secured(getToken, validator, onInvalidToken)
@@ -80,20 +71,20 @@ object JwtAuth:
     lazy val optional: JwtAuth[F, MaybeAuthenticated[H, C]] =
       JwtAuth.optional(getToken, validator, onInvalidToken)
 
-    def withOnInvalidToken(action: AuthError => F[Unit]): Builder[F, H, C] =
+    def withOnInvalidToken(action: ValidateFailure => F[Unit]): Builder[F, H, C] =
       copy(onInvalidToken = Some(action))
 
-    def withGeToken(f: GetToken[F]): Builder[F, H, C] =
+    def withGetToken(f: GetToken[F]): Builder[F, H, C] =
       copy(getToken = f)
 
     def withBearerToken: Builder[F, H, C] =
-      withGeToken(GetToken.bearer[F])
+      withGetToken(GetToken.bearer[F])
 
     def withValidator(v: JwtValidator[F, H, C]): Builder[F, H, C] =
       copy(validator = v)
 
     def modifyGetToken(f: GetToken[F] => GetToken[F]): Builder[F, H, C] =
-      withGeToken(f(getToken))
+      withGetToken(f(getToken))
 
     def modifyValidator(
         f: JwtValidator[F, H, C] => JwtValidator[F, H, C]

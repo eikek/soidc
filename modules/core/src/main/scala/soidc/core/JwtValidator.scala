@@ -75,6 +75,9 @@ trait JwtValidator[F[_], H, C]:
   ): JwtValidator[F, H, C] =
     scoped(jws => sc.issuer(jws.claims).map(_.value).exists(f))
 
+  def toDecodingValidator(using Applicative[F]): JwtDecodingValidator[F, H, C] =
+    JwtDecodingValidator.from(this)
+
 object JwtValidator:
   type Result = Option[Validate.Result]
 

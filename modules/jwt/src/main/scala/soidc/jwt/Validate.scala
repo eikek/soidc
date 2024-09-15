@@ -16,36 +16,46 @@ object Validate:
     case AlgorithmMismatch(key: Option[Algorithm], jws: Option[Algorithm])
     case GenericReason(msg: String, cause: Option[Throwable] = None)
 
-  opaque type Result = Set[FailureReason]
+  enum Result:
+    case Valid
+    case Invalid(reason: FailureReason, more: FailureReason*)
+
+    def fold[A](valid: => A, invalid: Invalid => A): A = this match
+      case Valid      => valid
+      case e: Invalid => invalid(e)
+
+    def isValid: Boolean = fold(true, _ => false)
+    def isInvalid: Boolean = !isValid
+    infix def +(other: Result): Result = combine(other)
+
+    def combine(other: Result): Result =
+      fold(
+        other,
+        inv1 =>
+          other.fold(inv1, inv2 => Invalid(inv1.reason, (inv2.all - inv1.reason).toSeq*))
+      )
+
   object Result {
     def failed(f: FailureReason, fn: FailureReason*): Result =
-      fn.toSet + f
+      Result.Invalid(f, fn*)
 
-    def success: Result = Set.empty
+    def success: Result = Result.Valid
 
     def cond(test: Boolean, f: => FailureReason, fn: => FailureReason*): Result =
       if (test) Result.success
-      else fn.toSet + f
+      else failed(f, fn*)
 
     object Success {
       def unapply(r: Result): Option[Unit] =
-        if (r.isEmpty) Some(()) else None
+        if (r.isValid) Some(()) else None
     }
     object Failure {
       def unapply(r: Result): Option[Set[FailureReason]] =
-        if (r.isEmpty) None else Some(r)
+        r.fold(None, inv => Some(inv.all))
     }
 
-    extension (self: Result)
-      def isInvalid = self.nonEmpty
-      def isValid = self.isEmpty
-      def combine(other: Result): Result =
-        self ++ other
-
-      private def exp = self
-      export exp.toList
-
-      infix def +(other: Result): Result = combine(other)
+    extension (self: Result.Invalid)
+      def all: Set[FailureReason] = self.more.toSet + self.reason
   }
 
   def validateTime[C](
@@ -59,7 +69,7 @@ object Validate:
     val v2 = max.map { exp =>
       Result.cond(currentTime.isBefore(exp), FailureReason.Expired(exp))
     }
-    v1.getOrElse(Result.success) ++ v2.getOrElse(Result.success)
+    v1.getOrElse(Result.success) + v2.getOrElse(Result.success)
 
   def validateSignature[H, C](key: JWK, jws: JWSDecoded[H, C])(using
       StandardHeader[H]

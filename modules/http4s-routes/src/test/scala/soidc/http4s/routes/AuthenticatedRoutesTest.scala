@@ -7,9 +7,9 @@ import org.http4s.*
 import org.http4s.dsl.io.*
 import org.http4s.headers.Authorization
 import org.http4s.implicits.*
-import org.http4s.server.AuthMiddleware
 import soidc.borer.given
 import soidc.core.JwtValidator
+import soidc.core.JwtDecodingValidator.ValidateFailure
 import soidc.http4s.routes.JwtContext.*
 import soidc.jwt.*
 
@@ -19,22 +19,21 @@ class AuthenticatedRoutesTest extends CatsEffectSuite:
 
   val testRoutes = AuthedRoutes.of[Context, IO] {
     case ContextRequest(context, GET -> Root / "test") =>
-      Ok(context.token.claims.subject.map(_.value).getOrElse(""))
+      Ok(context.claims.subject.map(_.value).getOrElse(""))
   }
 
-  val authBuilder = JwtAuth.builder[IO, JoseHeader, SimpleClaims]
+  val authBuilder = JwtAuthMiddleware.builder[IO, JoseHeader, SimpleClaims]
 
   test("valid token"):
     val jws =
       JWS(Base64String.encodeString("{}"), Base64String.encodeString("""{"sub":"me"}"""))
     val validator = JwtValidator.alwaysValid[IO, JoseHeader, SimpleClaims]
-    val withAuth = AuthMiddleware(
-      authBuilder
-        .withValidator(validator)
-        .withBearerToken
-        .withOnInvalidToken(IO.println)
-        .secured
-    )
+    val withAuth = authBuilder
+      .withValidator(validator)
+      .withBearerToken
+      .withOnInvalidToken(IO.println)
+      .secured
+
     val app = withAuth(testRoutes).orNotFound
     val req = Request[IO](uri = uri"/test").withHeaders(
       Authorization(Credentials.Token(AuthScheme.Bearer, jws.compact))
@@ -47,14 +46,13 @@ class AuthenticatedRoutesTest extends CatsEffectSuite:
     val jws =
       JWS(Base64String.encodeString("{}"), Base64String.encodeString("""{"sub":"me"}"""))
     val validator = JwtValidator.invalid[IO, JoseHeader, SimpleClaims]()
-    val error: Ref[IO, Option[AuthError]] = Ref.unsafe(None)
-    val withAuth = AuthMiddleware(
-      authBuilder
-        .withValidator(validator)
-        .withBearerToken
-        .withOnInvalidToken(e => error.set(Some(e)))
-        .secured
-    )
+    val error: Ref[IO, Option[ValidateFailure]] = Ref.unsafe(None)
+    val withAuth = authBuilder
+      .withValidator(validator)
+      .withBearerToken
+      .withOnInvalidToken(e => error.set(Some(e)))
+      .secured
+
     val app = withAuth(testRoutes).orNotFound
     val req = Request[IO](uri = uri"/test").withHeaders(
       Authorization(Credentials.Token(AuthScheme.Bearer, jws.compact))
@@ -70,14 +68,13 @@ class AuthenticatedRoutesTest extends CatsEffectSuite:
         Base64String.encodeString("""{"sub":"me"}""")
       )
     val validator = JwtValidator.alwaysValid[IO, JoseHeader, SimpleClaims]
-    val error: Ref[IO, Option[AuthError]] = Ref.unsafe(None)
-    val withAuth = AuthMiddleware(
-      authBuilder
-        .withValidator(validator)
-        .withBearerToken
-        .withOnInvalidToken(e => error.set(Some(e)))
-        .secured
-    )
+    val error: Ref[IO, Option[ValidateFailure]] = Ref.unsafe(None)
+    val withAuth = authBuilder
+      .withValidator(validator)
+      .withBearerToken
+      .withOnInvalidToken(e => error.set(Some(e)))
+      .secured
+
     val app = withAuth(testRoutes).orNotFound
     val req = Request[IO](uri = uri"/test").withHeaders(
       Authorization(Credentials.Token(AuthScheme.Bearer, jws.compact))
