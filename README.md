@@ -1,6 +1,6 @@
 # soidc
 
-A Scala 3 library for adding OpenID support to your projects.
+A Scala 3 library for adding OpenID Connect support to your projects.
 
 
 ## Modules
@@ -306,7 +306,7 @@ val validator = JwtValidator
   .openId[IO, JoseHeader, SimpleClaims](cfg, client)
   .map(_.forIssuer(_.startsWith("http://issuer"))) // restrict this to the a known issuer
   .unsafeRunSync()
-// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.validate.JwtValidator$$anon$1@67a9760e
+// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.validate.JwtValidator$$anon$1@295506eb
 
 validator.validate(jws).unsafeRunSync() == Some(Validate.Result.success)
 // res9: Boolean = true
@@ -399,13 +399,13 @@ val testRoutes = AuthedRoutes.of[Context, IO] {
     Ok(context.claims.subject.map(_.value).getOrElse(""))
 }
 // testRoutes: Kleisli[[_$10 >: Nothing <: Any] =>> OptionT[[A >: Nothing <: Any] =>> IO[A], _$10], ContextRequest[[A >: Nothing <: Any] =>> IO[A], Context], Response[[A >: Nothing <: Any] =>> IO[A]]] = Kleisli(
-//   run = org.http4s.AuthedRoutes$$$Lambda$3591/0x0000000801a8a470@4bc23339
+//   run = org.http4s.AuthedRoutes$$$Lambda$3592/0x0000000801a8a960@296b8744
 // )
 
 // apply authentication code to testRoutes
 val httpApp = withAuth(testRoutes).orNotFound
 // httpApp: Kleisli[[A >: Nothing <: Any] =>> IO[A], Request[[A >: Nothing <: Any] =>> IO[A]], Response[[A >: Nothing <: Any] =>> IO[A]]] = Kleisli(
-//   run = org.http4s.syntax.KleisliResponseOps$$Lambda$3593/0x0000000801a8bac0@623ccb24
+//   run = org.http4s.syntax.KleisliResponseOps$$Lambda$3594/0x0000000801a8bfb0@52f199ae
 // )
 
 // create sample request
@@ -431,7 +431,7 @@ val req = Request[IO](uri = uri"/test").withHeaders(
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Authorization: Bearer e30.eyJzdWIiOiJtZSJ9),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@3f3ed8bc
+//    = org.typelevel.vault.Vault@18c43285
 // )
 
 val res = httpApp.run(req).unsafeRunSync()
@@ -440,7 +440,7 @@ val res = httpApp.run(req).unsafeRunSync()
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Content-Type: text/plain; charset=UTF-8, Content-Length: 2),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@220700c1
+//    = org.typelevel.vault.Vault@463b73e1
 // )
 ```
 
@@ -450,3 +450,16 @@ val res = httpApp.run(req).unsafeRunSync()
 - rsa from pkcs8 is for private and public
 - read private and public keys from pkcs8
 - code flow, direct grant
+
+## RFCs
+
+Just a list of related RFCs for reference:
+
+- OAuth https://datatracker.ietf.org/doc/html/rfc6749
+- OpenID
+  - https://openid.net/specs/openid-connect-core-1_0.html
+  - https://openid.net/specs/openid-connect-basic-1_0.html
+- JWS https://datatracker.ietf.org/doc/html/rfc7515
+- JWK https://datatracker.ietf.org/doc/html/rfc7517
+- JWA https://datatracker.ietf.org/doc/html/rfc7518
+- JWT https://datatracker.ietf.org/doc/html/rfc7519

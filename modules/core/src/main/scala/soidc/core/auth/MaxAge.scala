@@ -14,3 +14,4 @@ object MaxAge:
   extension (self: MaxAge)
     def toDuration: FiniteDuration = Duration(self, TimeUnit.SECONDS)
     def toSeconds: Long = self
+    def render: String = self.toString

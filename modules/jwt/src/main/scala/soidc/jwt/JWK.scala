@@ -103,7 +103,7 @@ object JWK:
       kid <- values.getAs[KeyId](P.Kid)
       us <- values.getAs[KeyUse](P.Use)
       keyop <- values.getAs[List[KeyOperation]](P.KeyOps)
-      alg <- values.getAs[Algorithm](P.Alg)
+      alg <- Right(values.tryGetAs[Algorithm](P.Alg).flatten)
       kty <- alg match
         case None    => values.requireAs[KeyType](P.Kty)
         case Some(a) => values.getAs[KeyType](P.Kty).map(_.getOrElse(a.keyType))

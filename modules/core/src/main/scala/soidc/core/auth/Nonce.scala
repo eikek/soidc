@@ -30,3 +30,5 @@ object Nonce:
         )
       }
     }
+
+  extension (self: Nonce) def render: String = self.toBase64(Alphabets.Base64UrlNoPad)

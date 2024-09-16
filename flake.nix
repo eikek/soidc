@@ -35,7 +35,12 @@
 
         soidccnt = devshell-tools.lib.mkContainer {
           system = flake-utils.lib.system.x86_64-linux;
-          modules = [services];
+          modules = [
+            services
+            {
+              networking.hostName = "soidccnt";
+            }
+          ];
         };
       };
     }

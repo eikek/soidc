@@ -3,6 +3,8 @@ package soidc.jwt
 import scodec.bits.ByteVector
 import soidc.jwt.codec.ByteDecoder
 import soidc.jwt.codec.ByteEncoder
+import soidc.jwt.codec.FromJson
+import soidc.jwt.codec.ToJson
 
 /** A JSON Web Signature.
   *
@@ -90,3 +92,8 @@ object JWS:
 
   def unsafeFromString(s: String): JWS =
     fromString(s).fold(sys.error, identity)
+
+  given FromJson[JWS] =
+    FromJson[String].mapEither(s => fromString(s).left.map(JwtError.DecodeError(_)))
+  given ToJson[JWS] =
+    ToJson[String].contramap(_.compact)

@@ -24,9 +24,14 @@ object JsonValue:
     ): Either[DecodeError, Option[A]] =
       get(name).map(dec.from).map(_.map(Some(_))).getOrElse(Right(None))
 
+    def tryGetAs[A](name: ParameterName)(using
+        dec: FromJson[A]
+    ): Option[Option[A]] =
+      get(name).map(dec.from(_).toOption)
+
     def requireAs[A](name: ParameterName)(using FromJson[A]): Either[DecodeError, A] =
       getAs[A](name).flatMap(
-        _.toRight(DecodeError(s"Missing json property: ${name.key}"))
+        _.toRight(DecodeError(s"Missing json property: ${name.key}\n${value}"))
       )
 
     def hasParameter(name: ParameterName): Boolean =
