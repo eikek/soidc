@@ -26,6 +26,9 @@ object GetToken:
   def constant[F[_]](token: String): GetToken[F] =
     _ => Some(token)
 
+  def anyOf[F[_]](fs: GetToken[F]*): GetToken[F] =
+    fs.foldLeft(noToken[F])(_.orElse(_))
+
   extension [F[_]](self: GetToken[F])
     def orElse(next: GetToken[F]): GetToken[F] = { req =>
       self(req).orElse(next(req))

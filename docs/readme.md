@@ -1,6 +1,6 @@
 # soidc
 
-A Scala 3 library for adding OpenID support to your projects.
+A Scala 3 library for adding OpenID Connect support to your projects.
 
 
 ## Modules
@@ -268,3 +268,16 @@ val res = httpApp.run(req).unsafeRunSync()
 - rsa from pkcs8 is for private and public
 - read private and public keys from pkcs8
 - code flow, direct grant
+
+## RFCs
+
+Just a list of related RFCs for reference:
+
+- OAuth https://datatracker.ietf.org/doc/html/rfc6749
+- OpenID
+  - https://openid.net/specs/openid-connect-core-1_0.html
+  - https://openid.net/specs/openid-connect-basic-1_0.html
+- JWS https://datatracker.ietf.org/doc/html/rfc7515
+- JWK https://datatracker.ietf.org/doc/html/rfc7517
+- JWA https://datatracker.ietf.org/doc/html/rfc7518
+- JWT https://datatracker.ietf.org/doc/html/rfc7519

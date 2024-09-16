@@ -399,13 +399,13 @@ val testRoutes = AuthedRoutes.of[Context, IO] {
     Ok(context.claims.subject.map(_.value).getOrElse(""))
 }
 // testRoutes: Kleisli[[_$10 >: Nothing <: Any] =>> OptionT[[A >: Nothing <: Any] =>> IO[A], _$10], ContextRequest[[A >: Nothing <: Any] =>> IO[A], Context], Response[[A >: Nothing <: Any] =>> IO[A]]] = Kleisli(
-//   run = org.http4s.AuthedRoutes$$$Lambda$3591/0x0000000801a8a220@4bc23339
+//   run = org.http4s.AuthedRoutes$$$Lambda$3591/0x0000000801a8a470@4bc23339
 // )
 
 // apply authentication code to testRoutes
 val httpApp = withAuth(testRoutes).orNotFound
 // httpApp: Kleisli[[A >: Nothing <: Any] =>> IO[A], Request[[A >: Nothing <: Any] =>> IO[A]], Response[[A >: Nothing <: Any] =>> IO[A]]] = Kleisli(
-//   run = org.http4s.syntax.KleisliResponseOps$$Lambda$3593/0x0000000801a8b870@623ccb24
+//   run = org.http4s.syntax.KleisliResponseOps$$Lambda$3593/0x0000000801a8bac0@623ccb24
 // )
 
 // create sample request
@@ -431,7 +431,7 @@ val req = Request[IO](uri = uri"/test").withHeaders(
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Authorization: Bearer e30.eyJzdWIiOiJtZSJ9),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@220700c1
+//    = org.typelevel.vault.Vault@3f3ed8bc
 // )
 
 val res = httpApp.run(req).unsafeRunSync()
@@ -440,7 +440,7 @@ val res = httpApp.run(req).unsafeRunSync()
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Content-Type: text/plain; charset=UTF-8, Content-Length: 2),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@2a1a57e5
+//    = org.typelevel.vault.Vault@220700c1
 // )
 ```
 

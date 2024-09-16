@@ -19,3 +19,4 @@ object JwtContext:
       extends JwtContext[H, C]:
     val isAuthenticated = token.isDefined
     val getToken = None
+    val claims = token.map(_.claims)

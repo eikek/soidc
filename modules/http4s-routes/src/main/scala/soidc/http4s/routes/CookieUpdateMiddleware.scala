@@ -34,19 +34,9 @@ final class CookieUpdateMiddleware[F[_]: Monad, H, C](
               case None => resp.pure[F]
               case Some(token) =>
                 val url = cookieUrl(ctxReq.req)
-                val domain = url.authority.map(_.host.renderString)
-                val path = Option.when(url.path.nonEmpty)(url.path.renderString)
                 claimModify(token.claims).map(token.withClaims(key, _)).map {
                   case Right(nt) =>
-                    val cookie = ResponseCookie(
-                      name = cookieName,
-                      content = nt.compact,
-                      domain = domain,
-                      sameSite = Some(SameSite.Strict),
-                      path = path,
-                      secure = url.scheme.exists(_.value.endsWith("s")),
-                      httpOnly = url.scheme.exists(_.value.startsWith("http"))
-                    )
+                    val cookie = JwtCookie.create(cookieName, nt.jws, url)
                     resp.addCookie(cookieModify(nt.claims, cookie))
                   case Left(err) => Response(status = Status.InternalServerError)
                 }
