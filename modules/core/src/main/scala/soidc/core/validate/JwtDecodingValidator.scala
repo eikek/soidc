@@ -1,9 +1,9 @@
-package soidc.core
+package soidc.core.validate
 
 import cats.Applicative
 import cats.syntax.all.*
 
-import soidc.core.JwtDecodingValidator.*
+import soidc.core.validate.JwtDecodingValidator.*
 import soidc.jwt.*
 import soidc.jwt.codec.ByteDecoder
 

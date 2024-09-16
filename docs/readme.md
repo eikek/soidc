@@ -141,7 +141,8 @@ First some setup code:
 import soidc.jwt.*
 import soidc.jwt.codec.syntax.*
 import soidc.borer.given
-import soidc.core.*
+import soidc.core.{TestHttpClient, OpenIdConfig}
+import soidc.core.validate.*
 import cats.effect.*
 import cats.effect.unsafe.implicits.*
 
@@ -164,7 +165,7 @@ val (jws, jwk) = createJWS(SimpleClaims.empty.withIssuer(StringOrUri(issuer.valu
 val jwksUri = "http://jwkb".uri
 val oidUri = "http://issuer/.well-known/openid-configuration".uri
 val dummyUri = "dummy:".uri
-val client = HttpClient.fromMap[IO](
+val client = TestHttpClient.fromMap[IO](
   Map(
     jwksUri -> JWKSet(jwk).toJsonValue,
     oidUri -> OpenIdConfig(
@@ -215,7 +216,7 @@ import org.http4s.dsl.io.*
 import org.http4s.server.AuthMiddleware
 
 import soidc.borer.given
-import soidc.core.JwtValidator
+import soidc.core.validate.JwtValidator
 import soidc.http4s.routes.JwtAuthMiddleware
 import soidc.http4s.routes.JwtContext.*
 import soidc.jwt.*

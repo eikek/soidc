@@ -252,7 +252,8 @@ First some setup code:
 import soidc.jwt.*
 import soidc.jwt.codec.syntax.*
 import soidc.borer.given
-import soidc.core.*
+import soidc.core.{TestHttpClient, OpenIdConfig}
+import soidc.core.validate.*
 import cats.effect.*
 import cats.effect.unsafe.implicits.*
 
@@ -275,7 +276,7 @@ val (jws, jwk) = createJWS(SimpleClaims.empty.withIssuer(StringOrUri(issuer.valu
 val jwksUri = "http://jwkb".uri
 val oidUri = "http://issuer/.well-known/openid-configuration".uri
 val dummyUri = "dummy:".uri
-val client = HttpClient.fromMap[IO](
+val client = TestHttpClient.fromMap[IO](
   Map(
     jwksUri -> JWKSet(jwk).toJsonValue,
     oidUri -> OpenIdConfig(
@@ -305,7 +306,7 @@ val validator = JwtValidator
   .openId[IO, JoseHeader, SimpleClaims](cfg, client)
   .map(_.forIssuer(_.startsWith("http://issuer"))) // restrict this to the a known issuer
   .unsafeRunSync()
-// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.JwtValidator$$anon$1@3ef79a66
+// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.validate.JwtValidator$$anon$1@67a9760e
 
 validator.validate(jws).unsafeRunSync() == Some(Validate.Result.success)
 // res9: Boolean = true
@@ -365,7 +366,7 @@ import org.http4s.dsl.io.*
 import org.http4s.server.AuthMiddleware
 
 import soidc.borer.given
-import soidc.core.JwtValidator
+import soidc.core.validate.JwtValidator
 import soidc.http4s.routes.JwtAuthMiddleware
 import soidc.http4s.routes.JwtContext.*
 import soidc.jwt.*
@@ -398,13 +399,13 @@ val testRoutes = AuthedRoutes.of[Context, IO] {
     Ok(context.claims.subject.map(_.value).getOrElse(""))
 }
 // testRoutes: Kleisli[[_$10 >: Nothing <: Any] =>> OptionT[[A >: Nothing <: Any] =>> IO[A], _$10], ContextRequest[[A >: Nothing <: Any] =>> IO[A], Context], Response[[A >: Nothing <: Any] =>> IO[A]]] = Kleisli(
-//   run = org.http4s.AuthedRoutes$$$Lambda$3585/0x0000000801a88000@163d5c24
+//   run = org.http4s.AuthedRoutes$$$Lambda$3591/0x0000000801a8a220@4bc23339
 // )
 
 // apply authentication code to testRoutes
 val httpApp = withAuth(testRoutes).orNotFound
 // httpApp: Kleisli[[A >: Nothing <: Any] =>> IO[A], Request[[A >: Nothing <: Any] =>> IO[A]], Response[[A >: Nothing <: Any] =>> IO[A]]] = Kleisli(
-//   run = org.http4s.syntax.KleisliResponseOps$$Lambda$3587/0x0000000801a89650@1ea33662
+//   run = org.http4s.syntax.KleisliResponseOps$$Lambda$3593/0x0000000801a8b870@623ccb24
 // )
 
 // create sample request
@@ -430,7 +431,7 @@ val req = Request[IO](uri = uri"/test").withHeaders(
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Authorization: Bearer e30.eyJzdWIiOiJtZSJ9),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@63f410d0
+//    = org.typelevel.vault.Vault@220700c1
 // )
 
 val res = httpApp.run(req).unsafeRunSync()
@@ -439,7 +440,7 @@ val res = httpApp.run(req).unsafeRunSync()
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Content-Type: text/plain; charset=UTF-8, Content-Length: 2),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@404a85b1
+//    = org.typelevel.vault.Vault@2a1a57e5
 // )
 ```
 

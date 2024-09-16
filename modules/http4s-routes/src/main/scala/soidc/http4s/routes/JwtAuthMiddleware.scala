@@ -8,8 +8,8 @@ import cats.syntax.all.*
 import org.http4s.*
 import org.http4s.headers.Location
 import org.http4s.server.AuthMiddleware
-import soidc.core.JwtDecodingValidator.ValidateFailure
-import soidc.core.JwtValidator
+import soidc.core.validate.JwtDecodingValidator.ValidateFailure
+import soidc.core.validate.JwtValidator
 import soidc.http4s.routes.JwtContext.*
 import soidc.jwt.codec.ByteDecoder
 

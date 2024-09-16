@@ -1,4 +1,4 @@
-package soidc.core
+package soidc.core.validate
 
 import scala.concurrent.duration.*
 
@@ -7,8 +7,9 @@ import cats.data.EitherT
 import cats.effect.*
 import cats.syntax.all.*
 
-import soidc.core.JwtValidator.Result
-import soidc.core.OpenIdJwtValidator.*
+import soidc.core.*
+import soidc.core.validate.JwtValidator.Result
+import soidc.core.validate.OpenIdJwtValidator.*
 import soidc.jwt.*
 import soidc.jwt.codec.ByteDecoder
 

@@ -7,6 +7,7 @@ addCommandAlias(
   "scalafmtSbtCheck; scalafmtCheckAll; Compile/scalafix --check; Test/scalafix --check"
 )
 addCommandAlias("fix", "Compile/scalafix; Test/scalafix; scalafmtSbt; scalafmtAll")
+addCommandAlias("quick-check", "Test/compile; readme/updateReadme; lint")
 
 val sharedSettings = Seq(
   organization := "com.github.eikek",
@@ -175,7 +176,7 @@ lazy val readme = project
       ()
     }
   )
-  .dependsOn(core, borer, http4sClient, http4sRoutes)
+  .dependsOn(core % "compile->compile;compile->test", borer, http4sClient, http4sRoutes)
 
 val root = project
   .in(file("."))

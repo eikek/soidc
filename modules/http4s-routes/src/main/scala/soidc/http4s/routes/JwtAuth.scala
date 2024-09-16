@@ -4,8 +4,8 @@ import cats.Monad
 import cats.data.{Kleisli, OptionT}
 import cats.syntax.all.*
 
-import soidc.core.JwtDecodingValidator.{Result, ValidateFailure}
-import soidc.core.JwtValidator
+import soidc.core.validate.JwtDecodingValidator.{Result, ValidateFailure}
+import soidc.core.validate.JwtValidator
 import soidc.http4s.routes.JwtContext.*
 import soidc.jwt.JWSDecoded
 import soidc.jwt.codec.ByteDecoder
