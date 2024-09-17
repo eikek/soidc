@@ -47,6 +47,18 @@ trait JwtValidator[F[_], H, C]:
       }
     }
 
+  /** If this validator returns a "not applicable" result, the `next` validator is tried.
+    */
+  infix def orElseF(
+      next: => F[JwtValidator[F, H, C]]
+  )(using Monad[F]): JwtValidator[F, H, C] =
+    JwtValidator.instance { jws =>
+      validate(jws).flatMap {
+        case Result.NotApplicable(_) => next.flatMap(_.validate(jws))
+        case r                       => r.pure[F]
+      }
+    }
+
   /** Converts an invalid result to a not-applicable result. */
   def invalidToNotApplicable(using Monad[F]): JwtValidator[F, H, C] =
     JwtValidator.instance { jws =>

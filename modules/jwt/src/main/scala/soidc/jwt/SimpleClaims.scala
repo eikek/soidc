@@ -63,4 +63,10 @@ object SimpleClaims:
   given ToJson[SimpleClaims] = ToJson.instance(_.values)
 
   given StandardClaims[SimpleClaims] =
-    StandardClaims(_.notBefore, _.expirationTime, _.issuer, _.jwtId)
+    StandardClaims(
+      _.notBefore,
+      _.expirationTime,
+      _.issuer,
+      _.jwtId,
+      _.withExpirationTime(_)
+    )

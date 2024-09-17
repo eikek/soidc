@@ -2,7 +2,7 @@ package soidc.jwt.codec
 
 import soidc.jwt.JwtError.DecodeError
 import soidc.jwt.ParameterName
-import soidc.jwt.codec.ToJson.syntax.*
+import soidc.jwt.codec.syntax.*
 
 /** Simplified json ast for use with this library */
 sealed trait JsonValue:
@@ -22,12 +22,7 @@ object JsonValue:
     def getAs[A](name: ParameterName)(using
         dec: FromJson[A]
     ): Either[DecodeError, Option[A]] =
-      get(name).map(dec.from).map(_.map(Some(_))).getOrElse(Right(None))
-
-    def tryGetAs[A](name: ParameterName)(using
-        dec: FromJson[A]
-    ): Option[Option[A]] =
-      get(name).map(dec.from(_).toOption)
+      get(name).map(_.as[A]).map(_.map(Some(_))).getOrElse(Right(None))
 
     def requireAs[A](name: ParameterName)(using FromJson[A]): Either[DecodeError, A] =
       getAs[A](name).flatMap(

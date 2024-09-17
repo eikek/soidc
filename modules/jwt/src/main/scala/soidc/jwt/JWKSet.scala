@@ -7,6 +7,9 @@ final case class JWKSet(keys: List[JWK]):
   def get(id: KeyId): Option[JWK] =
     keys.find(_.keyId.exists(_ == id))
 
+  def isEmpty: Boolean = keys.isEmpty
+  def nonEmpty: Boolean = !isEmpty
+
 object JWKSet:
   val empty: JWKSet = JWKSet(Nil)
 

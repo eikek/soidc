@@ -57,7 +57,8 @@ object JwtAuth:
       onInvalidToken: Option[ValidateFailure => F[Unit]]
   )(using ByteDecoder[H], ByteDecoder[C]): F[Option[JWSDecoded[H, C]]] =
     validator.toDecodingValidator.decodeValidate(token).flatMap {
-      case Result.Success(jwt) => jwt.some.pure[F]
+      case Result.Success(jwt) =>
+        jwt.some.pure[F]
       case Result.Failure(err) =>
         OptionT.fromOption(onInvalidToken).flatMapF(f => f(err).as(None)).value
     }

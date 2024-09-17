@@ -8,12 +8,14 @@ import soidc.jwt.JWS
 object JwtCookie:
 
   def create(name: String, jwt: JWS, uri: Uri): ResponseCookie =
-//    val path = Option.when(uri.path.nonEmpty)(uri.path.renderString)
+    val path = Option(uri.path.renderString)
+      .filter(_.nonEmpty)
+      .fold("/")(identity)
     ResponseCookie(
       name = name,
       content = jwt.compact,
       sameSite = Some(SameSite.Strict),
-      path = Some("/"),
+      path = Some(path),
       secure = uri.scheme.exists(_.value.endsWith("s")),
       httpOnly = uri.scheme.exists(_.value.startsWith("http"))
     )

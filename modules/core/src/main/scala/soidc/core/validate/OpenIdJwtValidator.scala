@@ -41,36 +41,45 @@ final class OpenIdJwtValidator[F[_], H, C](
               JwtValidator.notApplicable[F, H, C].pure[F]
             case _ =>
               val dummyIssuer = Uri.unsafeFromString("static:")
-              state.get.map(_.get(dummyIssuer)).flatMap(s => create(dummyIssuer, s.jwks))
+              create(dummyIssuer)
 
         case Some(issuer) =>
-          state.get.map(_.get(issuer)).flatMap(s => create(issuer, s.jwks))
+          create(issuer)
     }
 
-  def create(issuer: Uri, jwks: JWKSet): F[JwtValidator[F, H, C]] =
-    val v1 = JwtValidator
-      .validateWithJWKSet(jwks, clock, config.timingLeeway)
-      .invalidToNotApplicable
-    val v2 = fetchJWKSetGuarded(issuer).map { jwks =>
-      JwtValidator.validateWithJWKSet(jwks, clock, config.timingLeeway)
-    }
-    v2.map(v1.orElse(_))
+  def create(issuer: Uri): F[JwtValidator[F, H, C]] =
+    val v1 = state.get
+      .map(_.get(issuer))
+      .map(state =>
+        JwtValidator.validateWithJWKSet(state.jwks, clock, config.timingLeeway)
+      )
+    val v2 = fetchJWKSetGuarded(issuer).fold(
+      err => JwtValidator.invalid(err),
+      jwks => JwtValidator.validateWithJWKSet(jwks, clock, config.timingLeeway)
+    )
+    v1.map(_.invalidToNotApplicable.orElseF(v2))
 
-  def fetchJWKSetGuarded(issuer: Uri): F[JWKSet] =
+  def fetchJWKSetGuarded(issuer: Uri): EitherT[F, Validate.FailureReason, JWKSet] =
     for
-      _ <- checkLastUpdateDelay(issuer, config.minRequestDelay)
-      result <- fetchJWKSet(issuer)
+      _ <- EitherT(checkLastUpdateDelay(issuer, config.minRequestDelay))
+      result <- EitherT.liftF(fetchJWKSet(issuer))
     yield result
 
   def checkLastUpdateDelay(
       issuer: Uri,
       min: FiniteDuration
-  ): F[Unit] =
+  ): F[Either[Validate.FailureReason, Unit]] =
     clock.monotonic
       .flatMap(ct => state.modify(_.setLastUpdateDelay(issuer, ct)))
-      .flatMap {
-        case delay if delay > min => ().pure[F]
-        case _ => MonadThrow[F].raiseError(SoidcError.TooManyValidationRequests(min))
+      .map {
+        case delay if delay > min => Right(())
+        case _ =>
+          Left(
+            Validate.FailureReason.GenericReason(
+              s"Too many requests within $min to fetch jwks",
+              SoidcError.TooManyValidationRequests(min).some
+            )
+          )
       }
 
   def getOpenIdConfig(uri: Uri): F[OpenIdConfig] =
@@ -109,7 +118,7 @@ object OpenIdJwtValidator:
     *   skew
     */
   final case class Config(
-      minRequestDelay: FiniteDuration = 1.minute,
+      minRequestDelay: FiniteDuration = 5.seconds,
       timingLeeway: FiniteDuration = 30.seconds,
       jwksProvider: JwksProvider = JwksProvider.FromIssuer()
   ):

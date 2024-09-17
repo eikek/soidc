@@ -298,7 +298,7 @@ important to restrict the issuers to some trusted values.
 ```scala
 val cfg = OpenIdJwtValidator.Config()
 // cfg: Config = Config(
-//   minRequestDelay = 1 minute,
+//   minRequestDelay = 5 seconds,
 //   timingLeeway = 30 seconds,
 //   jwksProvider = FromIssuer(path = ".well-known/openid-configuration")
 // )
@@ -399,13 +399,13 @@ val testRoutes = AuthedRoutes.of[Context, IO] {
     Ok(context.claims.subject.map(_.value).getOrElse(""))
 }
 // testRoutes: Kleisli[[_$10 >: Nothing <: Any] =>> OptionT[[A >: Nothing <: Any] =>> IO[A], _$10], ContextRequest[[A >: Nothing <: Any] =>> IO[A], Context], Response[[A >: Nothing <: Any] =>> IO[A]]] = Kleisli(
-//   run = org.http4s.AuthedRoutes$$$Lambda$3592/0x0000000801a8a960@296b8744
+//   run = org.http4s.AuthedRoutes$$$Lambda$3598/0x0000000801a8c228@19b16c76
 // )
 
 // apply authentication code to testRoutes
 val httpApp = withAuth(testRoutes).orNotFound
 // httpApp: Kleisli[[A >: Nothing <: Any] =>> IO[A], Request[[A >: Nothing <: Any] =>> IO[A]], Response[[A >: Nothing <: Any] =>> IO[A]]] = Kleisli(
-//   run = org.http4s.syntax.KleisliResponseOps$$Lambda$3594/0x0000000801a8bfb0@52f199ae
+//   run = org.http4s.syntax.KleisliResponseOps$$Lambda$3600/0x0000000801a8d878@5e46c398
 // )
 
 // create sample request
@@ -431,7 +431,7 @@ val req = Request[IO](uri = uri"/test").withHeaders(
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Authorization: Bearer e30.eyJzdWIiOiJtZSJ9),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@18c43285
+//    = org.typelevel.vault.Vault@2a1a57e5
 // )
 
 val res = httpApp.run(req).unsafeRunSync()
@@ -440,7 +440,7 @@ val res = httpApp.run(req).unsafeRunSync()
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Content-Type: text/plain; charset=UTF-8, Content-Length: 2),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@463b73e1
+//    = org.typelevel.vault.Vault@10e0c815
 // )
 ```
 

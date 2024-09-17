@@ -96,7 +96,6 @@ object ExampleServer extends IOApp:
             post = POST(req.asUrlQuery, uri).withContentType(
               `Content-Type`(MediaType.application.`x-www-form-urlencoded`)
             )
-            _ <- post.bodyText.compile.string.flatMap(IO.println)
             body <- client.expect[TokenResponse](post)
             _ <- IO.println(body)
             ok <- Ok(body.toString)
