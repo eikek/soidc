@@ -12,6 +12,8 @@ object ByteEncoder:
   given [A](using f: ToJson[A], e: ByteEncoder[JsonValue]): ByteEncoder[A] =
     instance(a => e.encode(f.toJson(a)))
 
+  given ByteEncoder[ByteVector] = instance(identity)
+
   trait Syntax {
     extension [A: ByteEncoder](self: A)
       def toJsonUtf8 = summon[ByteEncoder[A]].encode(self).decodeUtf8Lenient

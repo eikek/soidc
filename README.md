@@ -306,7 +306,7 @@ val validator = JwtValidator
   .openId[IO, JoseHeader, SimpleClaims](cfg, client)
   .map(_.forIssuer(_.startsWith("http://issuer"))) // restrict this to the a known issuer
   .unsafeRunSync()
-// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.validate.JwtValidator$$anon$1@4eaa7c14
+// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.validate.JwtValidator$$anon$1@8339ae
 
 validator.validate(jws).unsafeRunSync() == Some(Validate.Result.success)
 // res9: Boolean = true
@@ -399,13 +399,13 @@ val testRoutes = AuthedRoutes.of[Context, IO] {
     Ok(context.claims.subject.map(_.value).getOrElse(""))
 }
 // testRoutes: Kleisli[[_$10 >: Nothing <: Any] =>> OptionT[[A >: Nothing <: Any] =>> IO[A], _$10], ContextRequest[[A >: Nothing <: Any] =>> IO[A], Context], Response[[A >: Nothing <: Any] =>> IO[A]]] = Kleisli(
-//   run = org.http4s.AuthedRoutes$$$Lambda$3591/0x0000000801a91960@40899569
+//   run = org.http4s.AuthedRoutes$$$Lambda$3598/0x0000000801a8c228@512878a7
 // )
 
 // apply authentication code to testRoutes
 val httpApp = withAuth(testRoutes).orNotFound
 // httpApp: Kleisli[[A >: Nothing <: Any] =>> IO[A], Request[[A >: Nothing <: Any] =>> IO[A]], Response[[A >: Nothing <: Any] =>> IO[A]]] = Kleisli(
-//   run = org.http4s.syntax.KleisliResponseOps$$Lambda$3593/0x0000000801a92fb0@7493524
+//   run = org.http4s.syntax.KleisliResponseOps$$Lambda$3600/0x0000000801a8d878@56e91dc7
 // )
 
 // create sample request
@@ -431,7 +431,7 @@ val req = Request[IO](uri = uri"/test").withHeaders(
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Authorization: Bearer e30.eyJzdWIiOiJtZSJ9),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@6f019523
+//    = org.typelevel.vault.Vault@39e89589
 // )
 
 val res = httpApp.run(req).unsafeRunSync()
@@ -440,16 +440,16 @@ val res = httpApp.run(req).unsafeRunSync()
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Content-Type: text/plain; charset=UTF-8, Content-Length: 2),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@4bfe0b18
+//    = org.typelevel.vault.Vault@4b74fb68
 // )
 ```
 
 ## TODO
 
-- `JWKGenerate`
-- rsa from pkcs8 is for private and public
-- read private and public keys from pkcs8
+- refresh token on validation, either use custom key or do the refresh-token dance for openid
+  - remove cookie update middleware stuff
 - code flow, direct grant
+- check nonce?? requires more in standard-claims :/
 
 ## RFCs
 

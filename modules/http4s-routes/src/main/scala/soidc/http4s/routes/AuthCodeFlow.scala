@@ -9,10 +9,10 @@ import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.Location
 import org.http4s.headers.`Content-Type`
-import soidc.core.OpenIdConfig
 import soidc.core.auth.{AuthorizationCodeResponse as ACR, State as AuthzState, *}
 import soidc.core.validate.JwtValidator
 import soidc.core.validate.OpenIdJwtValidator
+import soidc.core.{JwkGenerate, OpenIdConfig}
 import soidc.http4s.client.Http4sClient
 import soidc.jwt.codec.ByteDecoder
 import soidc.jwt.{Uri as _, *}
@@ -26,11 +26,11 @@ trait AuthCodeFlow[F[_]]:
   ): JwtValidator[F, H, C]
 
   def routes(
-      cont: Either[ACR.Result.Failure, TokenResponse] => F[Response[F]]
+      cont: Either[AuthCodeFlow.Failure, TokenResponse] => F[Response[F]]
   ): HttpRoutes[F]
 
   def run(req: Request[F])(
-      cont: Either[ACR.Result.Failure, TokenResponse] => F[Response[F]]
+      cont: Either[AuthCodeFlow.Failure, TokenResponse] => F[Response[F]]
   )(using cats.Functor[F]): F[Response[F]]
 
 object AuthCodeFlow:
@@ -39,15 +39,21 @@ object AuthCodeFlow:
       providerUri: Uri,
       baseUri: Uri,
       clientSecret: Option[ClientSecret],
-      authReq: AuthorizationRequest => F[AuthorizationRequest],
+      nonce: Option[Nonce],
       logger: String => F[Unit]
   )
+
+  enum Failure:
+    case Code(cause: ACR.Result.Failure)
+    case StateMismatch
 
   def apply[F[_]: Sync](cfg: Config[F], client: Client[F])(using
       EntityDecoder[F, OpenIdConfig],
       EntityDecoder[F, TokenResponse]
   ): F[AuthCodeFlow[F]] =
-    Ref[F].of(State()).map(Impl[F](cfg, client, _))
+    JwkGenerate
+      .symmetric()
+      .flatMap(jwk => Ref[F].of(State(jwk)).map(Impl[F](cfg, client, _)))
 
   private class Impl[F[_]: Sync](
       cfg: Config[F],
@@ -89,13 +95,13 @@ object AuthCodeFlow:
     }
 
     def routes(
-        cont: Either[ACR.Result.Failure, TokenResponse] => F[Response[F]]
+        cont: Either[AuthCodeFlow.Failure, TokenResponse] => F[Response[F]]
     ): HttpRoutes[F] = HttpRoutes.of {
       case GET -> Root =>
         for
-          randomState <- AuthzState.random[F]()
-          _ <- state.update(_.withState(randomState))
-          baseReq <- cfg.authReq(mkAuthRequest.withState(randomState))
+          key <- state.get.map(_.key)
+          randomState <- AuthzState.randomSigned(key)
+          baseReq = mkAuthRequest.withState(randomState).copy(nonce = cfg.nonce)
           authUri <- openIdConfig.map(_.authorizationEndpoint.asUri).map { uri =>
             uri.copy(query = Query.fromPairs(baseReq.asMap.toList*))
           }
@@ -103,33 +109,39 @@ object AuthCodeFlow:
           resp <- TemporaryRedirect(Location(authUri))
         yield resp
 
-      case req @ GET -> Root / "resume" =>
-        ACR.read(req.params) match
-          case r @ ACR.Result.Failure(_) =>
-            cfg.logger(s"Authentication failed: ${req.params}") >> cont(Left(r))
-
-          case ACR.Result.Success(code) =>
-            // TODO check state!
-            val req = TokenRequest.code(
-              code,
-              redirectUri.asJwtUri,
-              cfg.clientId,
-              cfg.clientSecret
-            )
-            for
-              _ <- cfg.logger("Authentication successful, obtaining access token…")
-              tokUri <- openIdConfig.map(_.tokenEndpoint.asUri)
-              token <- client.expect[TokenResponse](
-                POST(req.asUrlQuery, tokUri).withContentType(
-                  `Content-Type`(MediaType.application.`x-www-form-urlencoded`)
+      case req @ GET -> Root / "resume" :? Params.StateParam(authState) =>
+        state.get.map(_.key).flatMap { key =>
+          if (authState.forall(!_.checkWith(key)))
+            cfg.logger(s"State does not match") >> cont(Left(Failure.StateMismatch))
+          else
+            ACR.read(req.params) match
+              case r @ ACR.Result.Failure(_) =>
+                cfg.logger(s"Authentication failed: ${req.params}") >> cont(
+                  Left(Failure.Code(r))
                 )
-              )
-              resp <- cont(Right(token))
-            yield resp
+
+              case ACR.Result.Success(code) =>
+                val req = TokenRequest.code(
+                  code,
+                  redirectUri.asJwtUri,
+                  cfg.clientId,
+                  cfg.clientSecret
+                )
+                for
+                  _ <- cfg.logger("Authentication successful, obtaining access token…")
+                  tokUri <- openIdConfig.map(_.tokenEndpoint.asUri)
+                  token <- client.expect[TokenResponse](
+                    POST(req.asUrlQuery, tokUri).withContentType(
+                      `Content-Type`(MediaType.application.`x-www-form-urlencoded`)
+                    )
+                  )
+                  resp <- cont(Right(token))
+                yield resp
+        }
     }
 
     def run(req: Request[F])(
-        cont: Either[ACR.Result.Failure, TokenResponse] => F[Response[F]]
+        cont: Either[AuthCodeFlow.Failure, TokenResponse] => F[Response[F]]
     )(using cats.Functor[F]): F[Response[F]] =
       val path = Uri.Path(
         req.uri.path.segments.drop(cfg.baseUri.path.segments.size),
@@ -147,9 +159,9 @@ object AuthCodeFlow:
   }
 
   private case class State(
-      openIdCfg: Option[OpenIdConfig] = None,
-      authzState: Option[AuthzState] = None
+      key: JWK,
+      openIdCfg: Option[OpenIdConfig] = None
   ) {
     def withOpenIdConfig(c: OpenIdConfig) = copy(openIdCfg = c.some)
-    def withState(s: AuthzState) = copy(authzState = s.some)
+
   }

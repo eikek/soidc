@@ -1,17 +1,19 @@
 package soidc.core
 
-import cats.effect.*
-import cats.syntax.all.*
-import soidc.jwt.JWK
-import cats.effect.std.SecureRandom
-import scodec.bits.ByteVector
-import soidc.jwt.{Algorithm, JwtError}
 import java.security.KeyPairGenerator
 import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 import java.security.interfaces.RSAPrivateCrtKey
-import soidc.jwt.Curve
 import java.security.spec.ECGenParameterSpec
+
+import cats.effect.*
+import cats.effect.std.SecureRandom
+import cats.syntax.all.*
+
+import scodec.bits.ByteVector
+import soidc.jwt.Curve
+import soidc.jwt.JWK
+import soidc.jwt.{Algorithm, JwtError}
 
 /** Functions for creating random keys. */
 object JwkGenerate:
@@ -54,10 +56,10 @@ object JwkGenerate:
         Sync[F].raiseError(new Exception(s"Invalid algorthim for ec key: $algorithm"))
       )
       gen <- Sync[F].delay {
-         val spec = ECGenParameterSpec(curve.name)
-         val kg = KeyPairGenerator.getInstance("EC")
-         kg.initialize(spec, new java.security.SecureRandom)
-         kg
+        val spec = ECGenParameterSpec(curve.name)
+        val kg = KeyPairGenerator.getInstance("EC")
+        kg.initialize(spec, new java.security.SecureRandom)
+        kg
       }
       kpair <- Sync[F].delay(gen.generateKeyPair())
       key = JWK.ecKeyPair(

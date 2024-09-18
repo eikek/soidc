@@ -2,15 +2,15 @@ package soidc.jwt
 
 import java.security.PrivateKey
 import java.security.PublicKey
+import java.security.interfaces.ECPrivateKey
+import java.security.interfaces.ECPublicKey
+import java.security.interfaces.RSAPrivateCrtKey
 import javax.crypto.spec.SecretKeySpec
 
 import scodec.bits.ByteVector
 import soidc.jwt.JwtError.DecodeError
 import soidc.jwt.RegisteredParameterName as P
 import soidc.jwt.codec.*
-import java.security.interfaces.ECPrivateKey
-import java.security.interfaces.ECPublicKey
-import java.security.interfaces.RSAPrivateCrtKey
 
 final case class JWK(
     keyType: KeyType,

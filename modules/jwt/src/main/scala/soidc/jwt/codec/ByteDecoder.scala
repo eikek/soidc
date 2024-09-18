@@ -13,6 +13,8 @@ object ByteDecoder:
   given [A](using f: FromJson[A], d: ByteDecoder[JsonValue]): ByteDecoder[A] =
     instance(bv => d.decode(bv).flatMap(jv => f.from(jv)))
 
+  given ByteDecoder[ByteVector] = instance(Right(_))
+
   trait Syntax {
     extension (self: ByteVector)
       def as[A](using d: ByteDecoder[A]): Either[DecodeError, A] =

@@ -264,10 +264,10 @@ val res = httpApp.run(req).unsafeRunSync()
 
 ## TODO
 
-- `JWKGenerate`
-- rsa from pkcs8 is for private and public
-- read private and public keys from pkcs8
+- refresh token on validation, either use custom key or do the refresh-token dance for openid
+  - remove cookie update middleware stuff
 - code flow, direct grant
+- check nonce?? requires more in standard-claims :/
 
 ## RFCs
 

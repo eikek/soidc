@@ -14,6 +14,7 @@ import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.implicits.*
 import org.http4s.server.Router
+import scodec.bits.*
 import soidc.borer.given
 import soidc.core.OpenIdConfig
 import soidc.core.auth.*
@@ -41,8 +42,8 @@ object ExampleServer extends IOApp:
       ClientId("example"),
       uri"http://soidccnt:8180/realms/master", // keycloak realm
       uri"http://localhost:8888/login/keycloak", // where login route is mounted
-      ClientSecret("Fa9PRaVrgBZ4DmmwReU7bNEycNyxqGRu").some,
-      _.pure[IO],
+      ClientSecret("8CCr3yFDuMl3L0MgNSICXgELvuabi5si").some,
+      Some(Nonce(hex"caffee")),
       IO.println
     ),
     client
@@ -70,7 +71,8 @@ object ExampleServer extends IOApp:
       codeFlow.run(req) {
         case Left(err) => UnprocessableEntity(err.toString())
         case Right(token) =>
-          Ok(token.toString).map(
+          val at = token.accessToken.decode[JoseHeader, SimpleClaims].map(_.claims)
+          Ok(at.toString).map(
             _.putHeaders("Auth-Token" -> token.accessToken.compact)
               .addCookie(
                 JwtCookie
