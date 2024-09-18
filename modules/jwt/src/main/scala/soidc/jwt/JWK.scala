@@ -8,6 +8,9 @@ import scodec.bits.ByteVector
 import soidc.jwt.JwtError.DecodeError
 import soidc.jwt.RegisteredParameterName as P
 import soidc.jwt.codec.*
+import java.security.interfaces.ECPrivateKey
+import java.security.interfaces.ECPublicKey
+import java.security.interfaces.RSAPrivateCrtKey
 
 final case class JWK(
     keyType: KeyType,
@@ -72,6 +75,12 @@ object JWK:
   def rsaPrivate(pkcs8PrivateKey: String, alg: Algorithm): Either[JwtError, JWK] =
     RsaKey.fromPkcs8PrivateKey(pkcs8PrivateKey, alg)
 
+  def rsaDerPrivate(der: Array[Byte], alg: Algorithm): Either[JwtError, JWK] =
+    RsaKey.fromDerPrivate(der, alg)
+
+  def rsaPrivate(key: RSAPrivateCrtKey, alg: Algorithm): JWK =
+    RsaKey.fromPrivateKey(key, alg)
+
   def rsaPublic(pkcs8: String, alg: Algorithm): Either[JwtError, JWK] =
     RsaKey.fromPkcs8PubKey(pkcs8, alg)
 
@@ -97,6 +106,13 @@ object JWK:
 
   def ecKeyPair(priv: String, pub: String, alg: Algorithm): Either[JwtError, JWK] =
     EcKey.fromPkcs8KeyPair(priv, pub, alg)
+
+  def ecKeyPair(
+      priv: ECPrivateKey,
+      pub: ECPublicKey,
+      alg: Algorithm
+  ): Either[JwtError, JWK] =
+    EcKey.fromKeyPair(priv, pub, alg)
 
   def fromObj(values: JsonValue.Obj): Either[DecodeError, JWK] =
     for

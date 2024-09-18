@@ -77,6 +77,29 @@ private object EcKey:
       jwk = jwkpl.withValue(ECParam.D, d)
     yield jwk
 
+  def fromDerKeyPair(
+      privateKey: Array[Byte],
+      publicKey: Array[Byte],
+      alg: Algorithm
+  ): Either[JwtError, JWK] =
+    for
+      ppkey <- readDerPrivate(privateKey)
+      plkey <- readDerPublic(publicKey)
+      jwk <- fromKeyPair(ppkey, plkey, alg)
+    yield jwk
+
+  def fromKeyPair(
+      privateKey: ECPrivateKey,
+      publicKey: ECPublicKey,
+      alg: Algorithm
+  ): Either[JwtError, JWK] =
+    for
+      jwkpp <- fromECPrivateKey(privateKey, alg)
+      jwkpl <- fromECPublicKey(publicKey, alg)
+      d <- jwkpp.values.requireAs[Base64String](ECParam.D)
+      jwk = jwkpl.withValue(ECParam.D, d)
+    yield jwk
+
   def fromPkcs8PrivateKey(
       privateKey: String,
       alg: Algorithm
@@ -84,8 +107,12 @@ private object EcKey:
     for
       _ <- signAlgoName(alg)
       ppkey <- readEcPrivateKey(privateKey)
+      jwk <- fromECPrivateKey(ppkey, alg)
+    yield jwk
 
-      curveOid = {
+  def fromECPrivateKey(ppkey: ECPrivateKey, alg: Algorithm): Either[JwtError, JWK] =
+    for
+      curveOid <- wrapSecurityApi {
         val params = AlgorithmParameters.getInstance("EC")
         params.init(ppkey.getParams())
         params.getParameterSpec(classOf[ECGenParameterSpec]).getName()
@@ -106,14 +133,20 @@ private object EcKey:
     for
       _ <- signAlgoName(alg)
       plkey <- readEcPubliceKey(publicKey)
-      x = plkey.getW().getAffineX()
-      y = plkey.getW().getAffineY()
-      curveOid = {
+      jwk <- fromECPublicKey(plkey, alg)
+    yield jwk
+
+  def fromECPublicKey(plkey: ECPublicKey, alg: Algorithm): Either[JwtError, JWK] =
+    for
+      curveOid <- wrapSecurityApi {
         val params = AlgorithmParameters.getInstance("EC")
         params.init(plkey.getParams())
         params.getParameterSpec(classOf[ECGenParameterSpec]).getName()
       }
+
       crv <- Curve.fromString(curveOid).left.map(DecodeError(_))
+      x = plkey.getW().getAffineX()
+      y = plkey.getW().getAffineY()
 
       jwk = JWK(KeyType.EC)
         .withAlgorithm(alg)
@@ -149,10 +182,13 @@ private object EcKey:
         .left
         .map(err => DecodeError(err))
 
+      ppkey <- readDerPrivate(ppk.toArray)
+    yield ppkey
+
+  private def readDerPrivate(der: Array[Byte]): Either[JwtError, ECPrivateKey] =
+    for
       kf <- wrapSecurityApi(KeyFactory.getInstance("EC"))
-
-      ppkspec = PKCS8EncodedKeySpec(ppk.toArray)
-
+      ppkspec = PKCS8EncodedKeySpec(der)
       ppkey <- wrapSecurityApi(kf.generatePrivate(ppkspec))
         .map(_.asInstanceOf[ECPrivateKey])
     yield ppkey
@@ -169,10 +205,13 @@ private object EcKey:
         .left
         .map(err => DecodeError(err))
 
+      ppkey <- readDerPublic(ppk.toArray)
+    yield ppkey
+
+  private def readDerPublic(der: Array[Byte]): Either[JwtError, ECPublicKey] =
+    for
       kf <- wrapSecurityApi(KeyFactory.getInstance("EC"))
-
-      ppkspec = X509EncodedKeySpec(ppk.toArray)
-
+      ppkspec = X509EncodedKeySpec(der)
       ppkey <- wrapSecurityApi(kf.generatePublic(ppkspec))
         .map(_.asInstanceOf[ECPublicKey])
     yield ppkey

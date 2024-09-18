@@ -67,23 +67,32 @@ private[jwt] object RsaKey:
         )
         .left
         .map(err => DecodeError(err))
+
+      jwk <- fromDerPrivate(b64.toArray, alg)
+    yield jwk
+
+  def fromDerPrivate(key: Array[Byte], alg: Algorithm): Either[JwtError, JWK] =
+    for
       kf <- Try(KeyFactory.getInstance("RSA")).toEither.left
         .map(JwtError.SecurityApiError.apply)
 
-      kspec = PKCS8EncodedKeySpec(b64.toArray)
+      kspec = PKCS8EncodedKeySpec(key)
 
       ppk <- Try(kf.generatePrivate(kspec)).toEither.left
         .map(JwtError.SecurityApiError.apply)
         .map(_.asInstanceOf[RSAPrivateCrtKey])
 
-      jwk = JWK(KeyType.RSA)
-        .withAlgorithm(alg)
-        .withValue(Param.D, Base64String.encode(ppk.getPrivateExponent()))
-        .withValue(Param.N, Base64String.encode(ppk.getModulus()))
-        .withValue(Param.E, Base64String.encode(ppk.getPublicExponent()))
-        .withValue(Param.P, Base64String.encode(ppk.getPrimeP()))
-        .withValue(Param.Q, Base64String.encode(ppk.getPrimeQ()))
+      jwk = fromPrivateKey(ppk, alg)
     yield jwk
+
+  def fromPrivateKey(ppk: RSAPrivateCrtKey, alg: Algorithm): JWK =
+    JWK(KeyType.RSA)
+      .withAlgorithm(alg)
+      .withValue(Param.D, Base64String.encode(ppk.getPrivateExponent()))
+      .withValue(Param.N, Base64String.encode(ppk.getModulus()))
+      .withValue(Param.E, Base64String.encode(ppk.getPublicExponent()))
+      .withValue(Param.P, Base64String.encode(ppk.getPrimeP()))
+      .withValue(Param.Q, Base64String.encode(ppk.getPrimeQ()))
 
   def fromPkcs8PubKey(key: String, alg: Algorithm): Either[JwtError, JWK] =
     for
