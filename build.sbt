@@ -142,9 +142,9 @@ val http4sRoutes = project
     name := "soidc-http4s-routes",
     description := "Http4s routes for code flow",
     libraryDependencies ++=
-      Dependencies.http4sCore ++ Dependencies.http4sServer,
+      Dependencies.http4sCore ++ Dependencies.http4sServer ++ Dependencies.http4sDsl,
     libraryDependencies ++=
-      (Dependencies.http4sDsl ++ Dependencies.http4sEmberServer).map(_ % Test)
+      Dependencies.http4sEmberServer.map(_ % Test)
   )
   .dependsOn(core % "compile->compile;test->test", borer % "test->test", http4sClient)
 
