@@ -44,6 +44,7 @@ object ExampleServer extends IOApp:
       uri"http://localhost:8888/login/keycloak", // where login route is mounted
       ClientSecret("8CCr3yFDuMl3L0MgNSICXgELvuabi5si").some,
       Some(Nonce(hex"caffee")),
+      Some(ScopeList(Scope.Email, Scope.Profile)),
       IO.println
     ),
     client

@@ -10,6 +10,10 @@ import soidc.jwt.Uri
 sealed trait TokenRequest:
   def asMap: Map[String, String]
 
+  def clientId: ClientId
+  def clientSecret: Option[ClientSecret]
+  def removeClientSecret: TokenRequest
+
   lazy val asUrlParameterMap: Map[String, String] =
     asMap.view.mapValues(Util.urlEncode).toMap
 
@@ -39,10 +43,9 @@ object TokenRequest:
       clientId: ClientId,
       clientSecret: Option[ClientSecret]
   ) extends TokenRequest {
+    def removeClientSecret: Code = copy(clientSecret = None)
     lazy val asMap: Map[String, String] =
       List(
-        "client_id" -> clientId.value.some,
-        "client_secret" -> clientSecret.map(_.secret),
         "redirect_uri" -> redirectUri.value.some,
         "grant_type" -> GrantType.AuthorizationCode.render.some,
         "code" -> code.value.some
@@ -55,10 +58,9 @@ object TokenRequest:
       clientSecret: Option[ClientSecret],
       scope: Option[ScopeList]
   ) extends TokenRequest {
+    def removeClientSecret: Refresh = copy(clientSecret = None)
     lazy val asMap: Map[String, String] =
       List(
-        "client_id" -> clientId.value.some,
-        "client_secret" -> clientSecret.map(_.secret),
         "grant_type" -> GrantType.RefreshToken.render.some,
         "refresh_token" -> refreshToken.compact.some
       ).collect { case (name, Some(v)) => name -> v }.toMap

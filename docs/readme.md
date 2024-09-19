@@ -266,8 +266,6 @@ val res = httpApp.run(req).unsafeRunSync()
 
 ## TODO
 
-- move most of `routes.AuthCodeFlow` into `core`, since http-client
-  can do everything needed
 - fix ec for p384 and p521 (test fails randomly). also sometimes the
   imported ec key fails to verify!! even JWSTest fails sometimes on ec
   keys

@@ -8,7 +8,7 @@ import org.http4s.Method.POST
 import org.http4s.client.Client
 import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.ember.client.EmberClientBuilder
-import org.http4s.headers.`Content-Type`
+import org.http4s.headers.{Authorization, `Content-Type`}
 import soidc.core.HttpClient
 import soidc.core.auth.*
 import soidc.jwt.Uri as JwtUri
@@ -22,15 +22,24 @@ final class Http4sClient[F[_]: Sync](client: Client[F])
   def get[A](url: JwtUri)(using ByteDecoder[A]): F[A] =
     client.expect(url.value)
 
-  def post(url: JwtUri, body: TokenRequest)(using
+  def getToken(url: JwtUri, body: TokenRequest)(using
       ByteDecoder[TokenResponse]
   ): F[TokenResponse] =
     val uri = Uri.unsafeFromString(url.value)
+    val creds = body.clientSecret.map { sec =>
+      BasicCredentials(body.clientId.value, sec.secret)
+    }
     client.expect[TokenResponse](
-      POST(body.asUrlQuery, uri).withContentType(
-        `Content-Type`(MediaType.application.`x-www-form-urlencoded`)
-      )
+      POST(body.asUrlQuery, uri)
+        .withAuthorization(creds)
+        .withContentType(
+          `Content-Type`(MediaType.application.`x-www-form-urlencoded`)
+        )
     )
+
+  extension (self: Request[F])
+    def withAuthorization(cred: Option[BasicCredentials]) =
+      cred.map(h => self.putHeaders(Authorization(h))).getOrElse(self)
 
 object Http4sClient:
 

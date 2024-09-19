@@ -22,7 +22,7 @@ object TestHttpClient:
               case Right(v)  => MonadThrow[F].pure(v)
               case Left(err) => MonadThrow[F].raiseError(err)
 
-      def post(url: Uri, body: TokenRequest)(using
+      def getToken(url: Uri, body: TokenRequest)(using
           ByteDecoder[TokenResponse]
       ): F[TokenResponse] =
         MonadThrow[F].raiseError(new Exception("not implemented"))

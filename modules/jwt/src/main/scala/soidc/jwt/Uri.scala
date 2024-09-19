@@ -1,5 +1,8 @@
 package soidc.jwt
 
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+
 import soidc.jwt.JwtError.DecodeError
 import soidc.jwt.codec.{FromJson, ToJson}
 
@@ -18,6 +21,8 @@ object Uri:
   given FromJson[Uri] = FromJson.str(s => fromString(s).left.map(DecodeError(_)))
   given ToJson[Uri] = ToJson.forString
 
+  private def urlEncode(s: String) = URLEncoder.encode(s, StandardCharsets.UTF_8)
+
   extension (self: Uri)
     def value: String = self
 
@@ -25,3 +30,9 @@ object Uri:
       val p = if (path.startsWith("/")) path.drop(1) else path
       val u = if (self.endsWith("/")) self.dropRight(1) else self
       s"${u}/${p}"
+
+    def appendQuery(query: Map[String, String]): Uri =
+      val qstr = query.toList
+        .map { case (k, v) => s"${urlEncode(k)}=${urlEncode(v)}" }
+        .mkString("&")
+      s"${self}?${qstr}"

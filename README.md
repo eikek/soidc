@@ -433,7 +433,7 @@ val req = Request[IO](uri = uri"/test").withHeaders(
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Authorization: Bearer e30.eyJzdWIiOiJtZSJ9),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@670df518
+//    = org.typelevel.vault.Vault@40889d01
 // )
 
 val res = httpApp.run(req).unsafeRunSync()
@@ -442,14 +442,12 @@ val res = httpApp.run(req).unsafeRunSync()
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Content-Type: text/plain; charset=UTF-8, Content-Length: 2),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@48bdd4b0
+//    = org.typelevel.vault.Vault@670df518
 // )
 ```
 
 ## TODO
 
-- move most of `routes.AuthCodeFlow` into `core`, since http-client
-  can do everything needed
 - fix ec for p384 and p521 (test fails randomly). also sometimes the
   imported ec key fails to verify!! even JWSTest fails sometimes on ec
   keys
