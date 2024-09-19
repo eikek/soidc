@@ -48,9 +48,6 @@ final case class AuthorizationRequest(
   def withMaxAge(ma: MaxAge): AuthorizationRequest =
     copy(maxAge = Some(ma))
 
-  private inline def encodeParam(s: String): String =
-    java.net.URLEncoder.encode(s, StandardCharsets.UTF_8)
-
   lazy val asMap: Map[String, String] =
     List(
       "client_id" -> clientId.value.some,
@@ -65,7 +62,7 @@ final case class AuthorizationRequest(
     ).collect { case (param, Some(v)) => param -> v }.toMap
 
   lazy val asUrlParameterMap: Map[String, String] =
-    asMap.view.mapValues(encodeParam).toMap
+    asMap.view.mapValues(Util.urlEncode).toMap
 
   def asUrlQuery: String =
     asUrlParameterMap.map { case (k, v) => s"${k}=${v}" }.mkString("&")

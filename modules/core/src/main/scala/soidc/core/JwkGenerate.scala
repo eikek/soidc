@@ -11,9 +11,9 @@ import cats.effect.std.SecureRandom
 import cats.syntax.all.*
 
 import scodec.bits.ByteVector
+import soidc.jwt.Algorithm
 import soidc.jwt.Curve
 import soidc.jwt.JWK
-import soidc.jwt.{Algorithm, JwtError}
 
 /** Functions for creating random keys. */
 object JwkGenerate:
@@ -50,8 +50,8 @@ object JwkGenerate:
   def ec[F[_]: Sync](
       algorithm: Algorithm = Algorithm.ES256,
       curve: Curve = Curve.P256
-  ): F[Either[JwtError, JWK]] =
-    for
+  ): F[JWK] =
+    (for
       _ <- Sync[F].whenA(!algorithm.isEC)(
         Sync[F].raiseError(new Exception(s"Invalid algorthim for ec key: $algorithm"))
       )
@@ -67,4 +67,4 @@ object JwkGenerate:
         kpair.getPublic().asInstanceOf[ECPublicKey],
         algorithm
       )
-    yield key
+    yield key).rethrow

@@ -1,6 +1,8 @@
 # soidc
 
-A Scala 3 library for adding OpenID Connect support to your projects.
+A Scala 3 library for adding [OpenID
+Connect](https://openid.net/specs/openid-connect-core-1_0.html)
+support to your projects.
 
 
 ## Modules
@@ -306,7 +308,7 @@ val validator = JwtValidator
   .openId[IO, JoseHeader, SimpleClaims](cfg, client)
   .map(_.forIssuer(_.startsWith("http://issuer"))) // restrict this to the a known issuer
   .unsafeRunSync()
-// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.validate.JwtValidator$$anon$1@8339ae
+// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.validate.JwtValidator$$anon$1@295506eb
 
 validator.validate(jws).unsafeRunSync() == Some(Validate.Result.success)
 // res9: Boolean = true
@@ -399,13 +401,13 @@ val testRoutes = AuthedRoutes.of[Context, IO] {
     Ok(context.claims.subject.map(_.value).getOrElse(""))
 }
 // testRoutes: Kleisli[[_$10 >: Nothing <: Any] =>> OptionT[[A >: Nothing <: Any] =>> IO[A], _$10], ContextRequest[[A >: Nothing <: Any] =>> IO[A], Context], Response[[A >: Nothing <: Any] =>> IO[A]]] = Kleisli(
-//   run = org.http4s.AuthedRoutes$$$Lambda$3598/0x0000000801a8c228@512878a7
+//   run = org.http4s.AuthedRoutes$$$Lambda$3598/0x0000000801a8c228@19b16c76
 // )
 
 // apply authentication code to testRoutes
 val httpApp = withAuth(testRoutes).orNotFound
 // httpApp: Kleisli[[A >: Nothing <: Any] =>> IO[A], Request[[A >: Nothing <: Any] =>> IO[A]], Response[[A >: Nothing <: Any] =>> IO[A]]] = Kleisli(
-//   run = org.http4s.syntax.KleisliResponseOps$$Lambda$3600/0x0000000801a8d878@56e91dc7
+//   run = org.http4s.syntax.KleisliResponseOps$$Lambda$3600/0x0000000801a8d878@5e46c398
 // )
 
 // create sample request
@@ -431,7 +433,7 @@ val req = Request[IO](uri = uri"/test").withHeaders(
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Authorization: Bearer e30.eyJzdWIiOiJtZSJ9),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@39e89589
+//    = org.typelevel.vault.Vault@670df518
 // )
 
 val res = httpApp.run(req).unsafeRunSync()
@@ -440,12 +442,17 @@ val res = httpApp.run(req).unsafeRunSync()
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Content-Type: text/plain; charset=UTF-8, Content-Length: 2),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@4b74fb68
+//    = org.typelevel.vault.Vault@48bdd4b0
 // )
 ```
 
 ## TODO
 
+- move most of `routes.AuthCodeFlow` into `core`, since http-client
+  can do everything needed
+- fix ec for p384 and p521 (test fails randomly). also sometimes the
+  imported ec key fails to verify!! even JWSTest fails sometimes on ec
+  keys
 - refresh token on validation, either use custom key or do the refresh-token dance for openid
   - remove cookie update middleware stuff
 - code flow, direct grant

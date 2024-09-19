@@ -2,6 +2,8 @@ package soidc.core
 
 import cats.MonadThrow
 
+import soidc.core.auth.TokenRequest
+import soidc.core.auth.TokenResponse
 import soidc.jwt.*
 import soidc.jwt.codec.*
 
@@ -19,4 +21,9 @@ object TestHttpClient:
             dec.decode(e.encode(value)) match
               case Right(v)  => MonadThrow[F].pure(v)
               case Left(err) => MonadThrow[F].raiseError(err)
+
+      def post(url: Uri, body: TokenRequest)(using
+          ByteDecoder[TokenResponse]
+      ): F[TokenResponse] =
+        MonadThrow[F].raiseError(new Exception("not implemented"))
     }

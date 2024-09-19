@@ -65,12 +65,13 @@ object Sign:
       )
       offset = if (rem0.head > 0) 2 else 3
       (rem1, rLen) <- rem0.consume(offset + 1)(bv => Right(bv.last.toLong))
-      (rem2, r) <- rem1.consume(rLen)(bv =>
-        Right(bv.dropWhile(_ == 0).padLeft(outLen / 2))
-      )
+      padLen = outLen / 2
+      (rem2, r) <- rem1.consume(rLen) { bv =>
+        Right(if (padLen > bv.size) bv.padLeft(padLen) else bv)
+      }
       (rem3, sLen) <- rem2.consume(2)(bv => Right(bv.last.toLong))
       (rem4, s) <- rem3.consume(sLen)(bv =>
-        Right(bv.dropWhile(_ == 0).padLeft(outLen / 2))
+        Right(if (padLen > bv.size) bv.padLeft(padLen) else bv)
       )
       _ <- Either.cond(rem4.isEmpty, (), "Invalid DER signature")
     yield r ++ s).left.map(msg => JwtError.InvalidECSignature(der, Some(msg)))

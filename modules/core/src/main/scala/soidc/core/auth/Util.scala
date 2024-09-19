@@ -1,5 +1,7 @@
 package soidc.core.auth
 
+import java.nio.charset.StandardCharsets
+
 private object Util:
 
   def snakeCase(str: String): String =
@@ -16,3 +18,6 @@ private object Util:
   def lowerFirst(str: String): String =
     if (str.isEmpty() || str.charAt(0).isLower) str
     else str.updated(0, str.charAt(0).toLower)
+
+  inline def urlEncode(s: String): String =
+    java.net.URLEncoder.encode(s, StandardCharsets.UTF_8)

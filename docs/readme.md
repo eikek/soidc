@@ -1,6 +1,8 @@
 # soidc
 
-A Scala 3 library for adding OpenID Connect support to your projects.
+A Scala 3 library for adding [OpenID
+Connect](https://openid.net/specs/openid-connect-core-1_0.html)
+support to your projects.
 
 
 ## Modules
@@ -264,6 +266,11 @@ val res = httpApp.run(req).unsafeRunSync()
 
 ## TODO
 
+- move most of `routes.AuthCodeFlow` into `core`, since http-client
+  can do everything needed
+- fix ec for p384 and p521 (test fails randomly). also sometimes the
+  imported ec key fails to verify!! even JWSTest fails sometimes on ec
+  keys
 - refresh token on validation, either use custom key or do the refresh-token dance for openid
   - remove cookie update middleware stuff
 - code flow, direct grant
