@@ -16,9 +16,9 @@ import org.http4s.implicits.*
 import org.http4s.server.Router
 import scodec.bits.*
 import soidc.borer.given
-import soidc.core.OpenIdConfig
 import soidc.core.auth.*
 import soidc.core.validate.JwtValidator
+import soidc.core.{JwtCreate, OpenIdConfig}
 import soidc.http4s.client.ByteEntityDecoder.given
 import soidc.jwt.{Uri as _, *}
 

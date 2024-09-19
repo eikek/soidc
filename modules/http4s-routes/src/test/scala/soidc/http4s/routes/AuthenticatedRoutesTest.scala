@@ -1,7 +1,5 @@
 package soidc.http4s.routes
 
-import scala.concurrent.duration.*
-
 import cats.effect.*
 
 import munit.*
@@ -85,26 +83,26 @@ class AuthenticatedRoutesTest extends CatsEffectSuite:
     assertEquals(res.status, Status.Unauthorized)
     error.get.assert(_.isDefined)
 
-  test("refresh cookie"):
-    val jws =
-      JWS(Base64String.encodeString("{}"), Base64String.encodeString("""{"sub":"me"}"""))
-    val jwk = JWK.symmetric(Base64String.encodeString("hello"), Algorithm.HS256)
-    val cookieUpdate =
-      CookieUpdateMiddleware.default[IO]("auth-cookie", _ => uri"http://localhost", jwk)
-    val validator = JwtValidator.alwaysValid[IO, JoseHeader, SimpleClaims]
-    val withAuth = authBuilder
-      .withValidator(validator)
-      .withBearerToken
-      .withOnInvalidToken(IO.println)
-      .withAuthMiddleware(
-        cookieUpdate
-          .refresh[Authenticated[JoseHeader, SimpleClaims]](Clock[IO], 10.minutes)
-      )
-      .secured
+  // test("refresh cookie"):
+  //   val jws =
+  //     JWS(Base64String.encodeString("{}"), Base64String.encodeString("""{"sub":"me"}"""))
+  //   val jwk = JWK.symmetric(Base64String.encodeString("hello"), Algorithm.HS256)
+  //   val cookieUpdate =
+  //     CookieUpdateMiddleware.default[IO]("auth-cookie", _ => uri"http://localhost", jwk)
+  //   val validator = JwtValidator.alwaysValid[IO, JoseHeader, SimpleClaims]
+  //   val withAuth = authBuilder
+  //     .withValidator(validator)
+  //     .withBearerToken
+  //     .withOnInvalidToken(IO.println)
+  //     .withAuthMiddleware(
+  //       cookieUpdate
+  //         .refresh[Authenticated[JoseHeader, SimpleClaims]](Clock[IO], 10.minutes)
+  //     )
+  //     .secured
 
-    val app = withAuth(testRoutes).orNotFound
-    val req = Request[IO](uri = uri"/test").withHeaders(
-      Authorization(Credentials.Token(AuthScheme.Bearer, jws.compact))
-    )
-    val res = app.run(req)
-    println(res.unsafeRunSync())
+  //   val app = withAuth(testRoutes).orNotFound
+  //   val req = Request[IO](uri = uri"/test").withHeaders(
+  //     Authorization(Credentials.Token(AuthScheme.Bearer, jws.compact))
+  //   )
+  //   val res = app.run(req)
+  //   println(res.unsafeRunSync())

@@ -1,4 +1,4 @@
-package soidc.http4s.routes
+package soidc.core
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -14,28 +14,32 @@ import soidc.jwt.codec.ByteEncoder
   */
 object JwtCreate:
   /** Modify and sign a given JWS with the current time. */
-  def refresh[F[_]: Clock: MonadThrow, H, C](key: JWK, jws: JWSDecoded[H, C])(
-      modifyHeader: H => H,
+  def modify[F[_]: Clock: MonadThrow, H, C](key: JWK, jws: JWSDecoded[H, C])(
+      modifyHeader: (NumericDate, H) => H,
       modifyClaims: (NumericDate, C) => C
   )(using ByteEncoder[H], ByteEncoder[C]): F[JWSDecoded[H, C]] =
     Clock[F].realTimeInstant.map { now =>
-      val h = modifyHeader(jws.header)
-      val c = modifyClaims(NumericDate.instant(now), jws.claims)
+      val date = NumericDate.instant(now)
+      val h = modifyHeader(date, jws.header)
+      val c = modifyClaims(date, jws.claims)
       JWSDecoded.createSigned[H, C](h, c, key)
     }.rethrow
 
   def of[F[_]: Clock: MonadThrow, H, C](
       key: JWK,
-      header: H,
+      header: NumericDate => H,
       mkClaim: NumericDate => C
   )(using ByteEncoder[H], ByteEncoder[C]): F[JWSDecoded[H, C]] =
-    Clock[F].realTimeInstant.map { now =>
-      JWSDecoded.createSigned[H, C](
-        header,
-        mkClaim(NumericDate.instant(now)),
-        key
-      )
-    }.rethrow
+    Clock[F].realTimeInstant
+      .map(NumericDate.instant)
+      .map { now =>
+        JWSDecoded.createSigned[H, C](
+          header(now),
+          mkClaim(now),
+          key
+        )
+      }
+      .rethrow
 
   def default[F[_]: Clock: MonadThrow](
       key: JWK,
@@ -47,6 +51,6 @@ object JwtCreate:
   ): F[JWSDecoded[JoseHeader, SimpleClaims]] =
     of[F, JoseHeader, SimpleClaims](
       key,
-      key.algorithm.map(JoseHeader.jwt.withAlgorithm).getOrElse(JoseHeader.jwt),
+      _ => key.algorithm.map(JoseHeader.jwt.withAlgorithm).getOrElse(JoseHeader.jwt),
       now => modify(SimpleClaims.empty.withExpirationTime(now + validity))
     )
