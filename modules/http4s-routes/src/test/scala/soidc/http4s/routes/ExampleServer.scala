@@ -42,7 +42,7 @@ object ExampleServer extends IOApp:
       ClientId("example"),
       uri"http://soidccnt:8180/realms/master", // keycloak realm
       uri"http://localhost:8888/login/keycloak", // where login route is mounted
-      ClientSecret("8CCr3yFDuMl3L0MgNSICXgELvuabi5si").some,
+      ClientSecret("Fa9PRaVrgBZ4DmmwReU7bNEycNyxqGRu").some,
       Some(Nonce(hex"caffee")),
       Some(ScopeList(Scope.Email, Scope.Profile)),
       IO.println
@@ -108,7 +108,10 @@ object ExampleServer extends IOApp:
   }
 
   def maybeMember = AuthedRoutes.of[MaybeAuthenticated, IO] {
-    case ContextRequest(token, GET -> Root / "test") =>
+    case ContextRequest(token, req @ GET -> Root / "test") =>
+      println(
+        s">>>>> ${req.attributes.lookup(TokenAttribute.key[JoseHeader, SimpleClaims])}"
+      )
       token.claims.flatMap(_.subject) match
         case Some(s) => Ok(s"hello $s!!")
         case None    => Ok("Hello anonymous stranger!")

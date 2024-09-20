@@ -16,7 +16,7 @@ import soidc.jwt.codec.ByteDecoder
 /** Creates [[org.http4s.server.AuthMiddleware]]s */
 object JwtAuthMiddleware:
   def builder[F[_]: Monad, H, C](using ByteDecoder[H], ByteDecoder[C]): Builder[F, H, C] =
-    Builder(JwtAuth.builder[F, H, C], Nil, Nil)
+    Builder(JwtAuth.builder[F, H, C])
 
   def secured[F[_]: Monad, H, C](
       auth: JwtAuth[F, Authenticated[H, C]]
@@ -47,8 +47,12 @@ object JwtAuthMiddleware:
 
   final case class Builder[F[_], H, C](
       authBuilder: JwtAuth.Builder[F, H, C],
-      middlewares1: List[JwtAuthenticatedRoutesMiddleware[F, H, C]],
-      middlewares2: List[JwtMaybeAuthRoutesMiddleware[F, H, C]]
+      middlewares1: List[JwtAuthenticatedRoutesMiddleware[F, H, C]] = List(
+        TokenAttribute.forAutenticated[F, H, C]
+      ),
+      middlewares2: List[JwtMaybeAuthRoutesMiddleware[F, H, C]] = List(
+        TokenAttribute.forMaybeAuthenticated[F, H, C]
+      )
   )(using ByteDecoder[H], ByteDecoder[C], Monad[F]) {
     lazy val secured: AuthMiddleware[F, Authenticated[H, C]] =
       val route = JwtAuthMiddleware.secured(authBuilder.secured)
@@ -88,12 +92,12 @@ object JwtAuthMiddleware:
     def withAuthMiddleware(
         mw: JwtAuthenticatedRoutesMiddleware[F, H, C]
     ): Builder[F, H, C] =
-      copy(middlewares1 = mw :: middlewares1)
+      copy(middlewares1 = middlewares1 :+ mw)
 
     def withMaybeAuthMiddleware(
         mw: JwtMaybeAuthRoutesMiddleware[F, H, C]
     ): Builder[F, H, C] =
-      copy(middlewares2 = mw :: middlewares2)
+      copy(middlewares2 = middlewares2 :+ mw)
 
     private def applyMiddlewares1(
         r: AuthMiddleware[F, Authenticated[H, C]]
@@ -114,5 +118,4 @@ object JwtAuthMiddleware:
         ]
       )((res, el) => res.andThen(el))
       service => r(mw.apply(service))
-
   }

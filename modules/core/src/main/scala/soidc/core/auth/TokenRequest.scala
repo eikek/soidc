@@ -12,10 +12,9 @@ sealed trait TokenRequest:
 
   def clientId: ClientId
   def clientSecret: Option[ClientSecret]
-  def removeClientSecret: TokenRequest
 
   lazy val asUrlParameterMap: Map[String, String] =
-    asMap.view.mapValues(Util.urlEncode).toMap
+    asMap.map { case (k, v) => Util.urlEncode(k) -> Util.urlEncode(v) }
 
   def asUrlQuery: String =
     asUrlParameterMap.map { case (k, v) => s"${k}=${v}" }.mkString("&")
@@ -43,7 +42,6 @@ object TokenRequest:
       clientId: ClientId,
       clientSecret: Option[ClientSecret]
   ) extends TokenRequest {
-    def removeClientSecret: Code = copy(clientSecret = None)
     lazy val asMap: Map[String, String] =
       List(
         "redirect_uri" -> redirectUri.value.some,
@@ -58,10 +56,26 @@ object TokenRequest:
       clientSecret: Option[ClientSecret],
       scope: Option[ScopeList]
   ) extends TokenRequest {
-    def removeClientSecret: Refresh = copy(clientSecret = None)
     lazy val asMap: Map[String, String] =
       List(
         "grant_type" -> GrantType.RefreshToken.render.some,
-        "refresh_token" -> refreshToken.compact.some
+        "refresh_token" -> refreshToken.compact.some,
+        "scope" -> scope.map(_.render)
+      ).collect { case (name, Some(v)) => name -> v }.toMap
+  }
+
+  final case class DirectGrant(
+      username: String,
+      password: String,
+      clientId: ClientId,
+      clientSecret: Option[ClientSecret],
+      scope: Option[ScopeList]
+  ) extends TokenRequest {
+    lazy val asMap: Map[String, String] =
+      List(
+        "grant_type" -> GrantType.Password.render.some,
+        "username" -> username.some,
+        "password" -> password.some,
+        "scope" -> scope.map(_.render)
       ).collect { case (name, Some(v)) => name -> v }.toMap
   }

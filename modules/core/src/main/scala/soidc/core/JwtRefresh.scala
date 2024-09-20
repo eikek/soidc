@@ -15,6 +15,15 @@ trait JwtRefresh[F[_], H, C]:
   def andThen(next: JwtRefresh[F, H, C])(using FlatMap[F]): JwtRefresh[F, H, C] =
     JwtRefresh.of(refresh.andThen(_.flatMap(next.refresh)))
 
+  def filter(f: JWSDecoded[H, C] => Boolean)(using Applicative[F]): JwtRefresh[F, H, C] =
+    JwtRefresh.of(in => if (f(in)) refresh(in) else in.pure[F])
+
+  def forIssuer(f: String => Boolean)(using
+      sc: StandardClaims[C],
+      F: Applicative[F]
+  ): JwtRefresh[F, H, C] =
+    filter(jws => sc.issuer(jws.claims).map(_.value).exists(f))
+
 object JwtRefresh:
   def of[F[_], H, C](f: JWSDecoded[H, C] => F[JWSDecoded[H, C]]): JwtRefresh[F, H, C] =
     new JwtRefresh[F, H, C] {
