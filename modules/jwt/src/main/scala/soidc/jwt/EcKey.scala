@@ -170,7 +170,7 @@ private object EcKey:
       case Algorithm.ES512 => Right("SHA512withECDSA")
       case _               => Left(JwtError.UnsupportedSignatureAlgorithm(alg))
 
-  private def readEcPrivateKey(key: String): Either[JwtError, ECPrivateKey] =
+  private[jwt] def readEcPrivateKey(key: String): Either[JwtError, ECPrivateKey] =
     for
       ppk <- ByteVector
         .fromBase64Descriptive(
@@ -185,7 +185,7 @@ private object EcKey:
       ppkey <- readDerPrivate(ppk.toArray)
     yield ppkey
 
-  private def readDerPrivate(der: Array[Byte]): Either[JwtError, ECPrivateKey] =
+  private[jwt] def readDerPrivate(der: Array[Byte]): Either[JwtError, ECPrivateKey] =
     for
       kf <- wrapSecurityApi(KeyFactory.getInstance("EC"))
       ppkspec = PKCS8EncodedKeySpec(der)
@@ -193,7 +193,7 @@ private object EcKey:
         .map(_.asInstanceOf[ECPrivateKey])
     yield ppkey
 
-  private def readEcPubliceKey(key: String): Either[JwtError, ECPublicKey] =
+  private[jwt] def readEcPubliceKey(key: String): Either[JwtError, ECPublicKey] =
     for
       ppk <- ByteVector
         .fromBase64Descriptive(
@@ -208,7 +208,7 @@ private object EcKey:
       ppkey <- readDerPublic(ppk.toArray)
     yield ppkey
 
-  private def readDerPublic(der: Array[Byte]): Either[JwtError, ECPublicKey] =
+  private[jwt] def readDerPublic(der: Array[Byte]): Either[JwtError, ECPublicKey] =
     for
       kf <- wrapSecurityApi(KeyFactory.getInstance("EC"))
       ppkspec = X509EncodedKeySpec(der)

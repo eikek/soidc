@@ -48,36 +48,26 @@ object Sign:
         signature.update(payload)
       }
       sig <-
-        if (alg.isEC) ecExpectedSignatureLength(alg).flatMap { len =>
-          derSignatureToRS(ByteVector.view(signature.sign), len)
-        }
+        if (alg.isEC)
+          key.values
+            .requireAs[Curve](EcKey.ECParam.Crv)
+            .left
+            .map(err => JwtError.InvalidPrivateKey(err, key))
+            .map(ecExpectedSignatureLength)
+            .flatMap { len =>
+              derSignatureToRS(ByteVector.view(signature.sign), len)
+            }
         else wrapSecurityApi(ByteVector.view(signature.sign))
     yield sig
 
   /** Converts a EC signature in DER format into the "R+S" format required by JWT */
-  def derSignatureToRS(
+  private def derSignatureToRS(
       der: ByteVector,
       outLen: Int
   ): Either[JwtError.InvalidECSignature, ByteVector] =
-    (for
-      (rem0, _) <- der.consume(1)(bv =>
-        Either.cond(bv.head == 0x30, (), s"Invalid DER signature: header byte: $bv")
-      )
-      offset = if (rem0.head > 0) 2 else 3
-      (rem1, rLen) <- rem0.consume(offset + 1)(bv => Right(bv.last.toLong))
-      padLen = outLen / 2
-      (rem2, r) <- rem1.consume(rLen) { bv =>
-        Right(if (padLen > bv.size) bv.padLeft(padLen) else bv)
-      }
-      (rem3, sLen) <- rem2.consume(2)(bv => Right(bv.last.toLong))
-      (rem4, s) <- rem3.consume(sLen)(bv =>
-        Right(if (padLen > bv.size) bv.padLeft(padLen) else bv)
-      )
-      _ <- Either.cond(rem4.isEmpty, (), "Invalid DER signature")
-    yield r ++ s).left.map(msg => JwtError.InvalidECSignature(der, Some(msg)))
+    EcDerCodec.derSignatureToRS(der, outLen)
 
-  private def ecExpectedSignatureLength(alg: Algorithm) = alg match
-    case Algorithm.ES256 => Right(64)
-    case Algorithm.ES384 => Right(96)
-    case Algorithm.ES512 => Right(132)
-    case _               => Left(JwtError.UnsupportedSignatureAlgorithm(alg))
+  private def ecExpectedSignatureLength(crv: Curve) = crv match
+    case Curve.P256 => 64
+    case Curve.P384 => 96
+    case Curve.P521 => 132

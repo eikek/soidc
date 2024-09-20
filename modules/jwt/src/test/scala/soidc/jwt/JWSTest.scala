@@ -1,5 +1,7 @@
 package soidc.jwt
 
+import java.security.Signature
+
 import munit.*
 import pdi.jwt.JwtAlgorithm
 import pdi.jwt.JwtUtils
@@ -160,7 +162,7 @@ class JWSTest extends FunSuite with Syntax:
     val pk = JWK.rsaKey(KeyData.rsaPub, Algorithm.RS256).value
     assert(jws.verifySignature(pk).value)
 
-  test("imported ec key"):
+  test("imported ec key".only):
     val jwk = JWK.ecKeyPair(KeyData.ecPrivate, KeyData.ecPublic, Algorithm.ES256).value
     val jws = JWS(
       // {"typ":"JWT","alg":"ES256"}
@@ -168,4 +170,13 @@ class JWSTest extends FunSuite with Syntax:
       // {"iss":"me myself"}
       Base64String.unsafeOf("eyJpc3MiOiJtZSBteXNlbGYifQ")
     ).signWith(jwk).value
-    assert(jws.verifySignature(jwk).value)
+    val javaSigned = {
+      val key = jwk.getPrivateKey.value
+      val signer = Signature.getInstance("SHA256withECDSA")
+      signer.initSign(key)
+      signer.update(jws.payload.toArray)
+      ByteVector.view(signer.sign())
+    }
+    println(jws.signature.get.decoded.toHex)
+    println(javaSigned.toHex)
+    assert(jws.verifySignature(jwk).value, "EC signature check failed")

@@ -62,25 +62,4 @@ object Verify:
   private def rsSignatureToDER(
       sig: ByteVector
   ): Either[JwtError.InvalidECSignature, ByteVector] =
-    def twoc(b: ByteVector) =
-      val b1 = b.dropWhile(_ == 0)
-      if (b1.nonEmpty && b1.head < 0) 0.toByte +: b1
-      else b1
-
-    val (r, s) = {
-      val (r1, s1) = sig.splitAt(sig.size / 2)
-      (twoc(r1), twoc(s1))
-    }
-    val len = 2 + r.size + 2 + s.size
-    val header = {
-      val h = ByteVector(0x30.toByte)
-      if (len >= 128) h :+ 0x81.toByte else h
-    }
-    if (len > 255) Left(JwtError.InvalidECSignature(sig))
-    else
-      Right(
-        header ++ ByteVector(len.toByte) ++ ByteVector(
-          2.toByte,
-          r.length.toByte
-        ) ++ r ++ ByteVector(2.toByte, s.length.toByte) ++ s
-      )
+    EcDerCodec.rsSignatureToDER(sig)

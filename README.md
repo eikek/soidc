@@ -308,7 +308,7 @@ val validator = JwtValidator
   .openId[IO, JoseHeader, SimpleClaims](cfg, client)
   .map(_.forIssuer(_.startsWith("http://issuer"))) // restrict this to the a known issuer
   .unsafeRunSync()
-// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.validate.JwtValidator$$anon$1@295506eb
+// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.validate.JwtValidator$$anon$1@6a2020d6
 
 validator.validate(jws).unsafeRunSync() == Some(Validate.Result.success)
 // res9: Boolean = true
@@ -401,13 +401,13 @@ val testRoutes = AuthedRoutes.of[Context, IO] {
     Ok(context.claims.subject.map(_.value).getOrElse(""))
 }
 // testRoutes: Kleisli[[_$10 >: Nothing <: Any] =>> OptionT[[A >: Nothing <: Any] =>> IO[A], _$10], ContextRequest[[A >: Nothing <: Any] =>> IO[A], Context], Response[[A >: Nothing <: Any] =>> IO[A]]] = Kleisli(
-//   run = org.http4s.AuthedRoutes$$$Lambda$3598/0x0000000801a8c228@19b16c76
+//   run = org.http4s.AuthedRoutes$$$Lambda$3598/0x0000000801a991c0@19321bb1
 // )
 
 // apply authentication code to testRoutes
 val httpApp = withAuth(testRoutes).orNotFound
 // httpApp: Kleisli[[A >: Nothing <: Any] =>> IO[A], Request[[A >: Nothing <: Any] =>> IO[A]], Response[[A >: Nothing <: Any] =>> IO[A]]] = Kleisli(
-//   run = org.http4s.syntax.KleisliResponseOps$$Lambda$3600/0x0000000801a8d878@5e46c398
+//   run = org.http4s.syntax.KleisliResponseOps$$Lambda$3601/0x0000000801a9abe0@56a182fc
 // )
 
 // create sample request
@@ -433,7 +433,7 @@ val req = Request[IO](uri = uri"/test").withHeaders(
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Authorization: Bearer e30.eyJzdWIiOiJtZSJ9),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@40889d01
+//    = org.typelevel.vault.Vault@ff8fe1f
 // )
 
 val res = httpApp.run(req).unsafeRunSync()
@@ -442,18 +442,14 @@ val res = httpApp.run(req).unsafeRunSync()
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Content-Type: text/plain; charset=UTF-8, Content-Length: 2),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@670df518
+//    = org.typelevel.vault.Vault@730fcd33
 // )
 ```
 
 ## TODO
 
-- fix ec for p384 and p521 (test fails randomly). also sometimes the
-  imported ec key fails to verify!! even JWSTest fails sometimes on ec
-  keys
 - refresh token on validation, either use custom key or do the refresh-token dance for openid
-  - remove cookie update middleware stuff
-- code flow, direct grant
+- direct grant
 - check nonce?? requires more in standard-claims :/
 
 ## RFCs

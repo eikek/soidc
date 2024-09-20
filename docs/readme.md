@@ -266,12 +266,8 @@ val res = httpApp.run(req).unsafeRunSync()
 
 ## TODO
 
-- fix ec for p384 and p521 (test fails randomly). also sometimes the
-  imported ec key fails to verify!! even JWSTest fails sometimes on ec
-  keys
 - refresh token on validation, either use custom key or do the refresh-token dance for openid
-  - remove cookie update middleware stuff
-- code flow, direct grant
+- direct grant
 - check nonce?? requires more in standard-claims :/
 
 ## RFCs
