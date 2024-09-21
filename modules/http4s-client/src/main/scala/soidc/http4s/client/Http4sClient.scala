@@ -29,7 +29,7 @@ final class Http4sClient[F[_]: Sync](client: Client[F])
     val creds = body.clientSecret.map { sec =>
       BasicCredentials(body.clientId.value, sec.secret)
     }
-    client.expect[TokenResponse](
+    client.fetchAs[TokenResponse](
       POST(body.asUrlQuery, uri)
         .withAuthorization(creds)
         .withContentType(

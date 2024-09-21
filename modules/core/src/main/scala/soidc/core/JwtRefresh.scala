@@ -42,7 +42,7 @@ object JwtRefresh:
         val date = NumericDate.instant(now)
         val h = modifyHeader(date, in.header)
         val c = modifyClaims(date, in.claims)
-        in.copy(header = h, claims = c)
+        in.copy(header = h, claims = c, jws = JWS.unsigned(h, c))
       }
     )
 
@@ -60,6 +60,14 @@ object JwtRefresh:
       (_, h) => h,
       (now, c) => StandardClaims[C].setExpirationTime(c, now + validity)
     ).andThen(sign[F, H, C](key))
+
+  def select[F[_], H, C](
+      f: JWSDecoded[H, C] => JwtRefresh[F, H, C]
+  ): JwtRefresh[F, H, C] =
+    of(in => f(in).refresh(in))
+
+  def liftF[F[_]: FlatMap, H, C](v: F[JwtRefresh[F, H, C]]): JwtRefresh[F, H, C] =
+    of(in => v.flatMap(_.refresh(in)))
 
   // sign makes it non-associative, though
   given [F[_]: Monad, H, C]: Monoid[JwtRefresh[F, H, C]] =

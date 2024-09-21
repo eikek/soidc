@@ -18,7 +18,7 @@ import scodec.bits.*
 import soidc.borer.given
 import soidc.core.auth.*
 import soidc.core.validate.JwtValidator
-import soidc.core.{JwtCreate, OpenIdConfig}
+import soidc.core.{JwtCreate, JwtRefresh, OpenIdConfig}
 import soidc.http4s.client.ByteEntityDecoder.given
 import soidc.jwt.{Uri as _, *}
 
@@ -26,7 +26,7 @@ object ExampleServer extends IOApp:
   // local users
   val serverSecret =
     JWK.symmetric(Base64String.encodeString("server-secret"), Algorithm.HS256)
-  val sessionValid = 2.minutes
+  val sessionValid = 10.minutes
   val localIssuer = "example-app"
   val localValidator = JwtValidator
     .validateWithKey[IO, JoseHeader, SimpleClaims](
@@ -35,6 +35,10 @@ object ExampleServer extends IOApp:
       Duration.Zero
     )
     .forIssuer(_ == localIssuer)
+  val localRefresh =
+    JwtRefresh
+      .extend[IO, JoseHeader, SimpleClaims](serverSecret)(sessionValid)
+      .forIssuer(_ == localIssuer)
 
   // OpenID Auth-Code-Flow with keycloak
   def authCodeFlow(client: Client[IO]) = AuthCodeFlow[IO](
@@ -42,7 +46,9 @@ object ExampleServer extends IOApp:
       ClientId("example"),
       uri"http://soidccnt:8180/realms/master", // keycloak realm
       uri"http://localhost:8888/login/keycloak", // where login route is mounted
-      ClientSecret("Fa9PRaVrgBZ4DmmwReU7bNEycNyxqGRu").some,
+      ClientSecret(
+        "8CCr3yFDuMl3L0MgNSICXgELvuabi5si"
+      ).some, // Fa9PRaVrgBZ4DmmwReU7bNEycNyxqGRu
       Some(Nonce(hex"caffee")),
       Some(ScopeList(Scope.Email, Scope.Profile)),
       IO.println
@@ -52,11 +58,15 @@ object ExampleServer extends IOApp:
 
   type Authenticated = JwtContext.Authenticated[JoseHeader, SimpleClaims]
   type MaybeAuthenticated = JwtContext.MaybeAuthenticated[JoseHeader, SimpleClaims]
-  def withAuth(validator: JwtValidator[IO, JoseHeader, SimpleClaims]) = JwtAuthMiddleware
+  def withAuth(
+      validator: JwtValidator[IO, JoseHeader, SimpleClaims],
+      refresh: JwtRefresh[IO, JoseHeader, SimpleClaims]
+  ) = JwtAuthMiddleware
     .builder[IO, JoseHeader, SimpleClaims]
     .withGeToken(GetToken.anyOf(GetToken.cookie("auth_cookie"), GetToken.bearer))
     .withOnInvalidToken(IO.println)
     .withValidator(validator)
+    .withRefresh(refresh, _.updateCookie("auth_cookie", uri"http://localhost:8888"))
 
   final case class UserPass(user: String, pass: String)
   object UserPassParam {
@@ -67,20 +77,32 @@ object ExampleServer extends IOApp:
       yield UserPass(un, pw)
   }
 
-  def loginRoute(codeFlow: AuthCodeFlow[IO]): HttpRoutes[IO] = HttpRoutes.of {
+  def loginRoute(
+      codeFlow: AuthCodeFlow[IO],
+      tokenStore: TokenStore[IO, JoseHeader, SimpleClaims]
+  ): HttpRoutes[IO] = HttpRoutes.of {
     case req @ GET -> "keycloak" /: _ =>
       codeFlow.run(req) {
         case Left(err) => UnprocessableEntity(err.toString())
         case Right(token) =>
-          val at = token.accessToken.decode[JoseHeader, SimpleClaims].map(_.claims)
-          Ok(at.toString).map(
-            _.putHeaders("Auth-Token" -> token.accessToken.compact)
-              .addCookie(
-                JwtCookie
-                  .create("auth_cookie", token.accessToken, uri"http://localhost:8888/")
-                  .copy(maxAge = token.expiresIn.map(_.toSeconds))
-              )
-          )
+          token.accessToken.decode[JoseHeader, SimpleClaims] match
+            case Left(err) => BadRequest(err.toString)
+            case Right(at) =>
+              for
+                _ <- tokenStore.setRefreshTokenIfPresent(at, token.refreshToken)
+                resp <- Ok(at.toString)
+                rr = resp
+                  .putHeaders("Auth-Token" -> token.accessToken.compact)
+                  .addCookie(
+                    JwtCookie
+                      .create(
+                        "auth_cookie",
+                        token.accessToken,
+                        uri"http://localhost:8888/"
+                      )
+                      .copy(maxAge = token.expiresIn.map(_.toSeconds))
+                  )
+              yield rr
       }
 
     case GET -> Root / "local" :? UserPassParam(name, pass) =>
@@ -109,39 +131,42 @@ object ExampleServer extends IOApp:
 
   def maybeMember = AuthedRoutes.of[MaybeAuthenticated, IO] {
     case ContextRequest(token, req @ GET -> Root / "test") =>
-      println(
-        s">>>>> ${req.attributes.lookup(TokenAttribute.key[JoseHeader, SimpleClaims])}"
-      )
       token.claims.flatMap(_.subject) match
         case Some(s) => Ok(s"hello $s!!")
         case None    => Ok("Hello anonymous stranger!")
   }
 
-  def routes(client: Client[IO], codeFlow: AuthCodeFlow[IO]) =
+  def routes(
+      client: Client[IO],
+      codeFlow: AuthCodeFlow[IO],
+      tokenStore: TokenStore[IO, JoseHeader, SimpleClaims]
+  ) =
     val auth = withAuth(
-      localValidator.orElse(codeFlow.validator[JoseHeader, SimpleClaims])
+      localValidator.orElse(codeFlow.validator[JoseHeader, SimpleClaims]),
+      codeFlow.jwtRefresh(tokenStore).andThen(localRefresh)
     )
     Router(
-      "login" -> loginRoute(codeFlow),
+      "login" -> loginRoute(codeFlow, tokenStore),
       "member" -> auth.secured(memberRoutes),
       "open" -> auth.optional(maybeMember)
     )
 
   def run(args: List[String]): IO[ExitCode] =
     EmberClientBuilder.default[IO].build.use { client =>
-      authCodeFlow(client).flatMap { codeFlow =>
-        EmberServerBuilder
-          .default[IO]
-          .withHost(host"0.0.0.0")
-          .withPort(port"8888")
-          .withHttpApp(routes(client, codeFlow).orNotFound)
-          .withShutdownTimeout(Duration.Zero)
-          .withErrorHandler { ex =>
-            IO.blocking(ex.printStackTrace())
-              .as(Response(status = Status.InternalServerError))
-          }
-          .build
-          .use(_ => Console[IO].readLine)
-          .as(ExitCode.Success)
+      (TokenStore.memory[IO, JoseHeader, SimpleClaims], authCodeFlow(client)).flatMapN {
+        (tokenStore, codeFlow) =>
+          EmberServerBuilder
+            .default[IO]
+            .withHost(host"0.0.0.0")
+            .withPort(port"8888")
+            .withHttpApp(routes(client, codeFlow, tokenStore).orNotFound)
+            .withShutdownTimeout(Duration.Zero)
+            .withErrorHandler { ex =>
+              IO.blocking(ex.printStackTrace())
+                .as(Response(status = Status.InternalServerError))
+            }
+            .build
+            .use(_ => Console[IO].readLine)
+            .as(ExitCode.Success)
       }
     }

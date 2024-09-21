@@ -5,22 +5,23 @@ import java.time.temporal.ChronoUnit
 import scala.concurrent.duration.*
 
 import cats.Applicative
+import cats.Monad
 import cats.data.Kleisli
 import cats.effect.*
 import cats.syntax.all.*
 
-import org.http4s.HttpApp
 import org.http4s.Response
 import org.http4s.Uri
 import soidc.core.JwtRefresh
 import soidc.jwt.JWSDecoded
 import soidc.jwt.StandardClaims
 
-object TokenRefreshMiddleware extends RequestAttributeSyntax:
+/** Refreshes an existing token if it gets near expiry. */
+object TokenRefreshMiddleware:
 
   final case class Config[F[_], H, C](
       _refresh: JwtRefresh[F, H, C],
-      expirationGap: FiniteDuration = 2.minutes,
+      expirationGap: FiniteDuration = 5.minutes,
       updateResponse: (Response[F], JWSDecoded[H, C]) => Response[F] =
         (r: Response[F], _: JWSDecoded[H, C]) => r
   ):
@@ -38,24 +39,42 @@ object TokenRefreshMiddleware extends RequestAttributeSyntax:
 
     def updateHeader(name: String): Config[F, H, C] =
       appendResponseUpdate((resp, token) => resp.putHeaders(name -> token.jws.compact))
+  end Config
 
-  def apply[F[_]: Sync, H, C](using
+  def forAuthenticated[F[_]: Monad: Clock, H, C](using
       StandardClaims[C]
-  )(cfg: Config[F, H, C])(app: HttpApp[F]): HttpApp[F] =
+  )(cfg: Config[F, H, C])(routes: JwtAuthRoutes[F, H, C]): JwtAuthRoutes[F, H, C] =
     Kleisli { req =>
-      req.attributes.lookup(TokenAttribute.key[H, C]) match
-        case Some(token) =>
-          expirationClose(token, cfg.expirationGap).flatMap {
-            case true =>
-              val nr = req.withAttribute(TokenAttribute.key[H, C], token)
-              app(nr).flatMap { resp =>
-                cfg.refresh(token).map { newToken =>
-                  cfg.updateResponse(resp, newToken)
-                }
-              }
-            case false => app(req)
-          }
-        case None => app(req)
+      routes(req).semiflatMap { resp =>
+        handleToken(cfg, req.context.token, resp)
+      }
+    }
+
+  def forMaybeAuthenticated[F[_]: Monad: Clock, H, C](using
+      StandardClaims[C]
+  )(
+      cfg: Config[F, H, C]
+  )(routes: JwtMaybeAuthRoutes[F, H, C]): JwtMaybeAuthRoutes[F, H, C] =
+    Kleisli { req =>
+      routes(req).semiflatMap { resp =>
+        req.context.token match
+          case Some(token) => handleToken[F, H, C](cfg, token, resp)
+          case None        => resp.pure[F]
+      }
+    }
+
+  private def handleToken[F[_]: Clock: Monad, H, C](
+      cfg: Config[F, H, C],
+      token: JWSDecoded[H, C],
+      resp: Response[F]
+  )(using StandardClaims[C]) =
+    expirationClose(token, cfg.expirationGap).flatMap {
+      case true =>
+        cfg.refresh(token).map { newToken =>
+          if (newToken.jws == token.jws) resp
+          else cfg.updateResponse(resp, newToken)
+        }
+      case false => resp.pure[F]
     }
 
   private def expirationClose[F[_]: Clock: Applicative, H, C](
@@ -66,6 +85,6 @@ object TokenRefreshMiddleware extends RequestAttributeSyntax:
       case None => false.pure[F]
       case Some(exp) =>
         Clock[F].realTimeInstant.map { now =>
-          val diff = exp.asInstant.until(now, ChronoUnit.SECONDS)
+          val diff = now.until(exp.asInstant, ChronoUnit.SECONDS)
           diff <= gap.toSeconds
         }

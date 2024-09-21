@@ -18,14 +18,24 @@ trait AuthorizationCodeFlow[F[_]]:
       ByteDecoder[JWKSet]
   ): JwtValidator[F, H, C]
 
+  /** Return a refresher to obtain new access tokens. */
+  def jwtRefresh[H, C](tokenStore: TokenStore[F, H, C])(using
+      StandardClaims[C],
+      ByteDecoder[H],
+      ByteDecoder[C]
+  ): JwtRefresh[F, H, C]
+
   /** Creates the authorization uri for redirecting the user agent to the auth provider.
     */
   def authorizeUrl: F[Uri]
 
   /** Get the access token with the query parameters from the redirect request. */
-  def obtainToken(reqParams: Map[String, String]): F[Either[Failure, TokenResponse]]
+  def obtainToken(
+      reqParams: Map[String, String]
+  ): F[Either[Failure, TokenResponse.Success]]
 
-  def refresh(refreshToken: JWS): F[TokenResponse]
+  /** Get a new access token using the given refresh token. */
+  def runRefreshRequest(refreshToken: JWS): F[TokenResponse]
 
 object AuthorizationCodeFlow:
   final case class Config[F[_]](
@@ -41,6 +51,7 @@ object AuthorizationCodeFlow:
 
   enum Failure:
     case Code(cause: ACR.Result.Failure)
+    case Token(cause: TokenResponse.Error)
     case StateMismatch
 
   def apply[F[_]](
@@ -81,7 +92,9 @@ object AuthorizationCodeFlow:
         }
       yield authUri
 
-    def obtainToken(reqParams: Map[String, String]): F[Either[Failure, TokenResponse]] =
+    def obtainToken(
+        reqParams: Map[String, String]
+    ): F[Either[Failure, TokenResponse.Success]] =
       val authState = reqParams.get("state").map(State.fromString)
       if (authState.forall(!_.checkWith(cfg.privateKey)))
         Left(Failure.StateMismatch).pure[F]
@@ -103,10 +116,10 @@ object AuthorizationCodeFlow:
                 s"Authentication successful, obtaining access token: $tokUri"
               )
               token <- client.getToken(tokUri, req)
-              resp = Right(token)
+              resp = token.fold(err => Left(Failure.Token(err)), Right(_))
             yield resp
 
-    def refresh(refreshToken: JWS): F[TokenResponse] =
+    def runRefreshRequest(refreshToken: JWS): F[TokenResponse] =
       val req =
         TokenRequest.refresh(refreshToken, cfg.clientId, cfg.clientSecret, cfg.scope)
       for
@@ -129,6 +142,29 @@ object AuthorizationCodeFlow:
           .map(_.forIssuer(_ == c.issuer.value))
       }
     }
+
+    def jwtRefresh[H, C](tokenStore: TokenStore[F, H, C])(using
+        StandardClaims[C],
+        ByteDecoder[H],
+        ByteDecoder[C]
+    ): JwtRefresh[F, H, C] =
+      cfg.clientSecret match
+        case None => JwtRefresh.passthrough[F, H, C]
+        case Some(secret) =>
+          JwtRefresh.liftF(openIdConfig.map(mkOpenidRefresh(secret, _, tokenStore)))
+
+    def mkOpenidRefresh[H, C](
+        secret: ClientSecret,
+        oidCfg: OpenIdConfig,
+        tokenStore: TokenStore[F, H, C]
+    )(using ByteDecoder[H], ByteDecoder[C], StandardClaims[C]) =
+      val rc = OpenidRefresh.Config(
+        cfg.clientId,
+        secret,
+        oidCfg.tokenEndpoint.pure[F],
+        cfg.scope
+      )
+      OpenidRefresh[F, H, C](client, tokenStore, rc).forIssuer(_ == oidCfg.issuer.value)
 
     def openIdConfig: F[OpenIdConfig] = flowState.get.map(_.openidConfig).flatMap {
       case Some(c) => c.pure[F]

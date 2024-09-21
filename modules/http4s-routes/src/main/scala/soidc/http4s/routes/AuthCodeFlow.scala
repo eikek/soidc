@@ -8,6 +8,7 @@ import org.http4s.client.Client
 import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.Location
+import soidc.core.JwtRefresh
 import soidc.core.auth.{AuthorizationCodeFlow as ACF, *}
 import soidc.core.validate.JwtValidator
 import soidc.core.{JwkGenerate, OpenIdConfig}
@@ -22,12 +23,18 @@ trait AuthCodeFlow[F[_]]:
       ByteDecoder[JWKSet]
   ): JwtValidator[F, H, C]
 
+  def jwtRefresh[H, C](tokenStore: TokenStore[F, H, C])(using
+      StandardClaims[C],
+      ByteDecoder[H],
+      ByteDecoder[C]
+  ): JwtRefresh[F, H, C]
+
   def routes(
-      cont: Either[ACF.Failure, TokenResponse] => F[Response[F]]
+      cont: Either[ACF.Failure, TokenResponse.Success] => F[Response[F]]
   ): HttpRoutes[F]
 
   def run(req: Request[F])(
-      cont: Either[ACF.Failure, TokenResponse] => F[Response[F]]
+      cont: Either[ACF.Failure, TokenResponse.Success] => F[Response[F]]
   )(using cats.Functor[F]): F[Response[F]]
 
 object AuthCodeFlow:
@@ -77,8 +84,14 @@ object AuthCodeFlow:
         ByteDecoder[JWKSet]
     ): JwtValidator[F, H, C] = flow.validator[H, C]
 
+    def jwtRefresh[H, C](tokenStore: TokenStore[F, H, C])(using
+        StandardClaims[C],
+        ByteDecoder[H],
+        ByteDecoder[C]
+    ): JwtRefresh[F, H, C] = flow.jwtRefresh[H, C](tokenStore)
+
     def routes(
-        cont: Either[ACF.Failure, TokenResponse] => F[Response[F]]
+        cont: Either[ACF.Failure, TokenResponse.Success] => F[Response[F]]
     ): HttpRoutes[F] = HttpRoutes.of {
       case GET -> Root =>
         for
@@ -92,7 +105,7 @@ object AuthCodeFlow:
     }
 
     def run(req: Request[F])(
-        cont: Either[ACF.Failure, TokenResponse] => F[Response[F]]
+        cont: Either[ACF.Failure, TokenResponse.Success] => F[Response[F]]
     )(using cats.Functor[F]): F[Response[F]] =
       val path = Uri.Path(
         req.uri.path.segments.drop(cfg.baseUri.path.segments.size),

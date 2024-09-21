@@ -67,6 +67,7 @@ object SimpleClaims:
       _.notBefore,
       _.expirationTime,
       _.issuer,
+      _.subject,
       _.jwtId,
       _.withExpirationTime(_)
     )

@@ -3,14 +3,17 @@ package soidc.http4s.routes
 import cats.Monad
 import cats.data.Kleisli
 import cats.data.OptionT
+import cats.effect.*
 import cats.syntax.all.*
 
 import org.http4s.*
 import org.http4s.headers.Location
 import org.http4s.server.AuthMiddleware
+import soidc.core.JwtRefresh
 import soidc.core.validate.JwtDecodingValidator.ValidateFailure
 import soidc.core.validate.JwtValidator
 import soidc.http4s.routes.JwtContext.*
+import soidc.jwt.StandardClaims
 import soidc.jwt.codec.ByteDecoder
 
 /** Creates [[org.http4s.server.AuthMiddleware]]s */
@@ -47,12 +50,8 @@ object JwtAuthMiddleware:
 
   final case class Builder[F[_], H, C](
       authBuilder: JwtAuth.Builder[F, H, C],
-      middlewares1: List[JwtAuthenticatedRoutesMiddleware[F, H, C]] = List(
-        TokenAttribute.forAutenticated[F, H, C]
-      ),
-      middlewares2: List[JwtMaybeAuthRoutesMiddleware[F, H, C]] = List(
-        TokenAttribute.forMaybeAuthenticated[F, H, C]
-      )
+      middlewares1: List[JwtAuthenticatedRoutesMiddleware[F, H, C]] = Nil,
+      middlewares2: List[JwtMaybeAuthRoutesMiddleware[F, H, C]] = Nil
   )(using ByteDecoder[H], ByteDecoder[C], Monad[F]) {
     lazy val secured: AuthMiddleware[F, Authenticated[H, C]] =
       val route = JwtAuthMiddleware.secured(authBuilder.secured)
@@ -80,6 +79,21 @@ object JwtAuthMiddleware:
 
     def withValidator(v: JwtValidator[F, H, C]): Builder[F, H, C] =
       copy(authBuilder = authBuilder.withValidator(v))
+
+    def withRefresh(
+        v: JwtRefresh[F, H, C],
+        config: TokenRefreshMiddleware.Config[F, H, C] => TokenRefreshMiddleware.Config[
+          F,
+          H,
+          C
+        ]
+    )(using StandardClaims[C], Clock[F]): Builder[F, H, C] =
+      val cfg = TokenRefreshMiddleware.Config[F, H, C](v)
+      withAuthMiddleware(
+        TokenRefreshMiddleware.forAuthenticated[F, H, C](config(cfg))
+      ).withMaybeAuthMiddleware(
+        TokenRefreshMiddleware.forMaybeAuthenticated(config(cfg))
+      )
 
     def modifyGetToken(f: GetToken[F] => GetToken[F]): Builder[F, H, C] =
       copy(authBuilder = authBuilder.modifyGetToken(f))

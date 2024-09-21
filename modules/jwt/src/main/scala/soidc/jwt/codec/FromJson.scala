@@ -12,6 +12,11 @@ trait FromJson[A]:
   def mapEither[B](f: A => Either[DecodeError, B]): FromJson[B] =
     FromJson.instance(v => self.from(v).flatMap(f))
 
+  def orElse(next: FromJson[A]): FromJson[A] =
+    FromJson.instance(v => self.from(v).orElse(next.from(v)))
+
+  def widen[B >: A]: FromJson[B] = self.asInstanceOf[FromJson[B]]
+
 object FromJson:
   def apply[A](using f: FromJson[A]): FromJson[A] = f
 
