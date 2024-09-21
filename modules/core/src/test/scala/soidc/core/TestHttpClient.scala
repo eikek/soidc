@@ -2,8 +2,8 @@ package soidc.core
 
 import cats.MonadThrow
 
-import soidc.core.auth.TokenRequest
-import soidc.core.auth.TokenResponse
+import soidc.core.model.TokenRequest
+import soidc.core.model.TokenResponse
 import soidc.jwt.*
 import soidc.jwt.codec.*
 

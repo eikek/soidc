@@ -13,4 +13,7 @@ object StringOrUri:
 
   extension (self: StringOrUri)
     def value: String = self
-    def isURI: Boolean = Uri.fromString(self).isRight
+    def isUri: Boolean = toUri.isDefined
+    def toUri: Option[Uri] =
+      if (self.exists(_ == ':')) Uri.fromString(self).toOption
+      else None

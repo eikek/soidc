@@ -1,4 +1,4 @@
-package soidc.core.validate
+package soidc.core
 
 import scala.util.matching.Regex
 
@@ -6,7 +6,6 @@ import cats.MonadThrow
 import cats.effect.*
 import cats.syntax.all.*
 
-import soidc.core.*
 import soidc.jwt.*
 import soidc.jwt.codec.ByteDecoder
 

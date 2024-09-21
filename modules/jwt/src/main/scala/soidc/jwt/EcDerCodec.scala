@@ -14,19 +14,16 @@ private object EcDerCodec:
       )
       offset = if (rem0.head >= 0) 2 else 3
       (rem1, rLen) <- rem0.consume(offset + 1)(bv => Right(bv.last.toLong))
-//      _ = println(s"rlen = $rLen")
       intLen = outLen / 2
       (rem2, r) <- rem1.consume(rLen) { bv =>
         val bv1 = bv.dropWhile(_ == 0)
         Right(if (intLen > bv1.size) bv1.padLeft(intLen) else bv1)
       }
       (rem3, sLen) <- rem2.consume(2)(bv => Right(bv.last.toLong))
-//      _ = println(s"slen = $sLen")
       (rem4, s) <- rem3.consume(sLen)(bv =>
         val bv1 = bv.dropWhile(_ == 0)
         Right(if (intLen > bv1.size) bv1.padLeft(intLen) else bv1)
       )
-//      _ = println(s"inLen = $intLen\nr = $r\ns = $s")
       _ <- Either.cond(rem4.isEmpty, (), "Invalid DER signature")
     yield r ++ s).left.map(msg => JwtError.InvalidECSignature(der, Some(msg)))
 

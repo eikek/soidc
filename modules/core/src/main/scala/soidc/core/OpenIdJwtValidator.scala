@@ -1,4 +1,4 @@
-package soidc.core.validate
+package soidc.core
 
 import scala.concurrent.duration.*
 
@@ -7,9 +7,8 @@ import cats.data.EitherT
 import cats.effect.*
 import cats.syntax.all.*
 
-import soidc.core.*
-import soidc.core.validate.JwtValidator.Result
-import soidc.core.validate.OpenIdJwtValidator.*
+import soidc.core.JwtValidator.Result
+import soidc.core.OpenIdJwtValidator.*
 import soidc.jwt.*
 import soidc.jwt.codec.ByteDecoder
 
@@ -40,7 +39,7 @@ final class OpenIdJwtValidator[F[_], H, C](
             case JwksProvider.FromIssuer(_) =>
               JwtValidator.notApplicable[F, H, C].pure[F]
             case _ =>
-              val dummyIssuer = Uri.unsafeFromString("static:")
+              val dummyIssuer = Uri.unsafeFromString("static:none")
               create(dummyIssuer)
 
         case Some(issuer) =>

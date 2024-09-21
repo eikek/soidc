@@ -10,7 +10,7 @@ import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.headers.{Authorization, `Content-Type`}
 import soidc.core.HttpClient
-import soidc.core.auth.*
+import soidc.core.model.*
 import soidc.jwt.Uri as JwtUri
 import soidc.jwt.codec.ByteDecoder
 

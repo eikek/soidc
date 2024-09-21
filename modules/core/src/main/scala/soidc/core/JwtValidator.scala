@@ -1,4 +1,4 @@
-package soidc.core.validate
+package soidc.core
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -9,8 +9,7 @@ import cats.effect.*
 import cats.syntax.all.*
 import cats.{Monad, Monoid}
 
-import soidc.core.*
-import soidc.core.validate.JwtValidator.Result
+import soidc.core.JwtValidator.Result
 import soidc.jwt.*
 import soidc.jwt.codec.ByteDecoder
 

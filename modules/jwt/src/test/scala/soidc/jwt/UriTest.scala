@@ -17,7 +17,7 @@ class UriTest extends FunSuite:
       assertEquals(u.addPath(p), Uri.unsafeFromString("http://test.com/a/b"))
 
   test("fail on invaid"):
-    val uris = List("", "___", "  ", "caffee", "////", "1m://test")
+    val uris = List("", "_ __", "  ", "caffee:", "//", "1m://test")
     uris.foreach(u => assert(Uri.fromString(u).isLeft, s"Unexpected valid uri: $u"))
 
   test("success on valid"):

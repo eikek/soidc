@@ -1,4 +1,4 @@
-package soidc.core.validate
+package soidc.core
 
 import scala.util.Try
 

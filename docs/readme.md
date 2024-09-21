@@ -144,7 +144,7 @@ import soidc.jwt.*
 import soidc.jwt.codec.syntax.*
 import soidc.borer.given
 import soidc.core.{TestHttpClient, OpenIdConfig}
-import soidc.core.validate.*
+import soidc.core.*
 import cats.effect.*
 import cats.effect.unsafe.implicits.*
 
@@ -166,7 +166,7 @@ val issuer = "http://issuer".uri
 val (jws, jwk) = createJWS(SimpleClaims.empty.withIssuer(StringOrUri(issuer.value)))
 val jwksUri = "http://jwkb".uri
 val oidUri = "http://issuer/.well-known/openid-configuration".uri
-val dummyUri = "dummy:".uri
+val dummyUri = "dummy:none".uri
 val client = TestHttpClient.fromMap[IO](
   Map(
     jwksUri -> JWKSet(jwk).toJsonValue,
@@ -218,7 +218,7 @@ import org.http4s.dsl.io.*
 import org.http4s.server.AuthMiddleware
 
 import soidc.borer.given
-import soidc.core.validate.JwtValidator
+import soidc.core.JwtValidator
 import soidc.http4s.routes.JwtAuthMiddleware
 import soidc.http4s.routes.JwtContext.*
 import soidc.jwt.*
@@ -237,7 +237,7 @@ val withAuth = JwtAuthMiddleware.builder[IO, JoseHeader, SimpleClaims] // captur
 Now, `withAuth` can be used to turn the `testRoutes` into a normal
 `HttpRoutes[F]` to be finally served:
 
-```scala mdoc
+```scala mdoc:silent
 import cats.effect.unsafe.implicits.*
 
 import org.http4s.implicits.*
@@ -257,11 +257,15 @@ val httpApp = withAuth(testRoutes).orNotFound
 // create sample request
 val jws =
   JWS(Base64String.encodeString("{}"), Base64String.encodeString("""{"sub":"me"}"""))
-val req = Request[IO](uri = uri"/test").withHeaders(
+val badReq = Request[IO](uri = uri"/test")
+val goodReq = badReq.withHeaders(
   Authorization(Credentials.Token(AuthScheme.Bearer, jws.compact))
 )
+```
 
-val res = httpApp.run(req).unsafeRunSync()
+```scala mdoc
+val res1 = httpApp.run(badReq).unsafeRunSync()
+val res2 = httpApp.run(goodReq).unsafeRunSync()
 ```
 
 ## TODO

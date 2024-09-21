@@ -1,18 +1,15 @@
-package soidc.core.auth
+package soidc.core
 
 import cats.MonadThrow
 import cats.data.OptionT
 import cats.syntax.all.*
 
-import soidc.core.HttpClient
-import soidc.core.JwtRefresh
-import soidc.core.auth.OpenidRefresh.Config
-import soidc.jwt.JWS
-import soidc.jwt.JWSDecoded
-import soidc.jwt.Uri
+import soidc.core.OpenIdRefresh.Config
+import soidc.core.model.*
+import soidc.jwt.*
 import soidc.jwt.codec.ByteDecoder
 
-final class OpenidRefresh[F[_]: MonadThrow, H, C](
+final class OpenIdRefresh[F[_]: MonadThrow, H, C](
     client: HttpClient[F],
     tokenStore: TokenStore[F, H, C],
     config: Config[F]
@@ -48,7 +45,7 @@ final class OpenidRefresh[F[_]: MonadThrow, H, C](
       resp <- client.getToken(uri, req)
     yield resp
 
-object OpenidRefresh:
+object OpenIdRefresh:
 
   final case class Config[F[_]](
       clientId: ClientId,

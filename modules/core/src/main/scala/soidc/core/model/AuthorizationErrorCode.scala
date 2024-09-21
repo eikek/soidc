@@ -1,4 +1,4 @@
-package soidc.core.auth
+package soidc.core.model
 
 enum AuthorizationErrorCode:
   // OAuth

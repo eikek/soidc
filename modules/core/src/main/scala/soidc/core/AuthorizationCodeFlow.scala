@@ -1,12 +1,11 @@
-package soidc.core.auth
+package soidc.core
 
 import cats.effect.*
 import cats.syntax.all.*
 
-import soidc.core.*
-import soidc.core.auth.AuthorizationCodeFlow.Failure
-import soidc.core.auth.AuthorizationCodeResponse as ACR
-import soidc.core.validate.{JwtValidator, OpenIdJwtValidator}
+import soidc.core.AuthorizationCodeFlow.Failure
+import soidc.core.model.*
+import soidc.core.model.AuthorizationCodeResponse as ACR
 import soidc.jwt.*
 import soidc.jwt.codec.ByteDecoder
 
@@ -158,13 +157,13 @@ object AuthorizationCodeFlow:
         oidCfg: OpenIdConfig,
         tokenStore: TokenStore[F, H, C]
     )(using ByteDecoder[H], ByteDecoder[C], StandardClaims[C]) =
-      val rc = OpenidRefresh.Config(
+      val rc = OpenIdRefresh.Config(
         cfg.clientId,
         secret,
         oidCfg.tokenEndpoint.pure[F],
         cfg.scope
       )
-      OpenidRefresh[F, H, C](client, tokenStore, rc).forIssuer(_ == oidCfg.issuer.value)
+      OpenIdRefresh[F, H, C](client, tokenStore, rc).forIssuer(_ == oidCfg.issuer.value)
 
     def openIdConfig: F[OpenIdConfig] = flowState.get.map(_.openidConfig).flatMap {
       case Some(c) => c.pure[F]

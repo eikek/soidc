@@ -1,7 +1,10 @@
 package soidc.jwt
 
+import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+
+import scala.util.Try
 
 import soidc.jwt.JwtError.DecodeError
 import soidc.jwt.codec.{FromJson, ToJson}
@@ -9,11 +12,9 @@ import soidc.jwt.codec.{FromJson, ToJson}
 opaque type Uri = String
 
 object Uri:
-  private val schemeRegex = "^[a-zA-Z][a-zA-Z0-9\\+\\-\\.]*:.*".r
-
   def fromString(s: String): Either[String, Uri] =
-    if (schemeRegex.matches(s.trim)) Right(s.trim)
-    else Left(s"Invalid uri: $s")
+    if (s.trim.isEmpty()) Left("Empty uri")
+    else Try(URI.create(s)).toEither.left.map(_.getMessage()).map(_ => s)
 
   def unsafeFromString(s: String): Uri =
     fromString(s).fold(sys.error, identity)

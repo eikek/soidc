@@ -1,4 +1,4 @@
-package soidc.core.auth
+package soidc.core.model
 
 import cats.effect.Sync
 import cats.effect.std.SecureRandom

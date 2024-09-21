@@ -1,4 +1,4 @@
-package soidc.core.auth
+package soidc.core
 
 import cats.Applicative
 import cats.effect.*

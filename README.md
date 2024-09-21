@@ -255,7 +255,7 @@ import soidc.jwt.*
 import soidc.jwt.codec.syntax.*
 import soidc.borer.given
 import soidc.core.{TestHttpClient, OpenIdConfig}
-import soidc.core.validate.*
+import soidc.core.*
 import cats.effect.*
 import cats.effect.unsafe.implicits.*
 
@@ -277,7 +277,7 @@ val issuer = "http://issuer".uri
 val (jws, jwk) = createJWS(SimpleClaims.empty.withIssuer(StringOrUri(issuer.value)))
 val jwksUri = "http://jwkb".uri
 val oidUri = "http://issuer/.well-known/openid-configuration".uri
-val dummyUri = "dummy:".uri
+val dummyUri = "dummy:none".uri
 val client = TestHttpClient.fromMap[IO](
   Map(
     jwksUri -> JWKSet(jwk).toJsonValue,
@@ -308,7 +308,7 @@ val validator = JwtValidator
   .openId[IO, JoseHeader, SimpleClaims](cfg, client)
   .map(_.forIssuer(_.startsWith("http://issuer"))) // restrict this to the a known issuer
   .unsafeRunSync()
-// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.validate.JwtValidator$$anon$1@6a2020d6
+// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.JwtValidator$$anon$1@21c488af
 
 validator.validate(jws).unsafeRunSync() == Some(Validate.Result.success)
 // res9: Boolean = true
@@ -368,7 +368,7 @@ import org.http4s.dsl.io.*
 import org.http4s.server.AuthMiddleware
 
 import soidc.borer.given
-import soidc.core.validate.JwtValidator
+import soidc.core.JwtValidator
 import soidc.http4s.routes.JwtAuthMiddleware
 import soidc.http4s.routes.JwtContext.*
 import soidc.jwt.*
@@ -400,49 +400,35 @@ val testRoutes = AuthedRoutes.of[Context, IO] {
   case ContextRequest(context, GET -> Root / "test") =>
     Ok(context.claims.subject.map(_.value).getOrElse(""))
 }
-// testRoutes: Kleisli[[_$10 >: Nothing <: Any] =>> OptionT[[A >: Nothing <: Any] =>> IO[A], _$10], ContextRequest[[A >: Nothing <: Any] =>> IO[A], Context], Response[[A >: Nothing <: Any] =>> IO[A]]] = Kleisli(
-//   run = org.http4s.AuthedRoutes$$$Lambda$3598/0x0000000801a991c0@19321bb1
-// )
 
 // apply authentication code to testRoutes
 val httpApp = withAuth(testRoutes).orNotFound
-// httpApp: Kleisli[[A >: Nothing <: Any] =>> IO[A], Request[[A >: Nothing <: Any] =>> IO[A]], Response[[A >: Nothing <: Any] =>> IO[A]]] = Kleisli(
-//   run = org.http4s.syntax.KleisliResponseOps$$Lambda$3601/0x0000000801a9abe0@56a182fc
-// )
 
 // create sample request
 val jws =
   JWS(Base64String.encodeString("{}"), Base64String.encodeString("""{"sub":"me"}"""))
-// jws: JWS = JWS(
-//   header = "e30",
-//   claims = "eyJzdWIiOiJtZSJ9",
-//   signature = None
-// )
-val req = Request[IO](uri = uri"/test").withHeaders(
+val badReq = Request[IO](uri = uri"/test")
+val goodReq = badReq.withHeaders(
   Authorization(Credentials.Token(AuthScheme.Bearer, jws.compact))
 )
-// req: Request[[A >: Nothing <: Any] =>> IO[A]] = (
-//    = GET,
-//    = Uri(
-//     scheme = None,
-//     authority = None,
-//     path = /test,
-//     query = ,
-//     fragment = None
-//   ),
-//    = HttpVersion(major = 1, minor = 1),
-//    = Headers(Authorization: Bearer e30.eyJzdWIiOiJtZSJ9),
-//    = Stream(..),
-//    = org.typelevel.vault.Vault@ff8fe1f
-// )
+```
 
-val res = httpApp.run(req).unsafeRunSync()
-// res: Response[[A >: Nothing <: Any] =>> IO[A]] = (
+```scala
+val res1 = httpApp.run(badReq).unsafeRunSync()
+// res1: Response[[A >: Nothing <: Any] =>> IO[A]] = (
+//    = Status(code = 401),
+//    = HttpVersion(major = 1, minor = 1),
+//    = Headers(),
+//    = Stream(..),
+//    = org.typelevel.vault.Vault@1d97424a
+// )
+val res2 = httpApp.run(goodReq).unsafeRunSync()
+// res2: Response[[A >: Nothing <: Any] =>> IO[A]] = (
 //    = Status(code = 200),
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Content-Type: text/plain; charset=UTF-8, Content-Length: 2),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@730fcd33
+//    = org.typelevel.vault.Vault@40903af6
 // )
 ```
 

@@ -1,6 +1,6 @@
 package soidc.core
 
-import soidc.core.auth.*
+import soidc.core.model.*
 import soidc.jwt.Uri
 import soidc.jwt.codec.*
 

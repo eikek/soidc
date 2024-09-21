@@ -1,10 +1,9 @@
-package soidc.core.validate
+package soidc.core
 
 import cats.effect.*
 
 import munit.CatsEffectSuite
 import soidc.borer.given
-import soidc.core.*
 import soidc.jwt.*
 import soidc.jwt.codec.JsonValue
 import soidc.jwt.codec.syntax.*
@@ -41,7 +40,7 @@ class OpenIdJwtValidatorTest extends CatsEffectSuite:
     val (jws, jwk) = createJWS(SimpleClaims.empty)
     val jwksUri = "http://jwkb".uri
     val oidUri = "http://oid".uri
-    val dummyUri = "dummy:".uri
+    val dummyUri = "dummy:none".uri
     val client = TestHttpClient.fromMap[IO](
       Map(
         jwksUri -> JWKSet(jwk).toJsonValue,
@@ -65,7 +64,7 @@ class OpenIdJwtValidatorTest extends CatsEffectSuite:
     val (jws, jwk) = createJWS(SimpleClaims.empty.withIssuer(StringOrUri(issuer.value)))
     val jwksUri = "http://jwkb".uri
     val oidUri = "http://issuer/.well-known/openid-configuration".uri
-    val dummyUri = "dummy:".uri
+    val dummyUri = "dummy:none".uri
     val client = TestHttpClient.fromMap[IO](
       Map(
         jwksUri -> JWKSet(jwk).toJsonValue,

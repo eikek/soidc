@@ -8,10 +8,8 @@ import org.http4s.client.Client
 import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.Location
-import soidc.core.JwtRefresh
-import soidc.core.auth.{AuthorizationCodeFlow as ACF, *}
-import soidc.core.validate.JwtValidator
-import soidc.core.{JwkGenerate, OpenIdConfig}
+import soidc.core.model.*
+import soidc.core.{AuthorizationCodeFlow as ACF, *}
 import soidc.http4s.client.Http4sClient
 import soidc.jwt.codec.ByteDecoder
 import soidc.jwt.{Uri as _, *}

@@ -8,8 +8,8 @@ import org.http4s.dsl.io.*
 import org.http4s.headers.Authorization
 import org.http4s.implicits.*
 import soidc.borer.given
-import soidc.core.validate.JwtDecodingValidator.ValidateFailure
-import soidc.core.validate.JwtValidator
+import soidc.core.JwtDecodingValidator.ValidateFailure
+import soidc.core.JwtValidator
 import soidc.http4s.routes.JwtContext.*
 import soidc.jwt.*
 

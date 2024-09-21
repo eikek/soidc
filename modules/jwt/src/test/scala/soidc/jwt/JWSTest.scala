@@ -1,7 +1,5 @@
 package soidc.jwt
 
-import java.security.Signature
-
 import munit.*
 import pdi.jwt.JwtAlgorithm
 import pdi.jwt.JwtUtils
@@ -170,13 +168,4 @@ class JWSTest extends FunSuite with Syntax:
       // {"iss":"me myself"}
       Base64String.unsafeOf("eyJpc3MiOiJtZSBteXNlbGYifQ")
     ).signWith(jwk).value
-    val javaSigned = {
-      val key = jwk.getPrivateKey.value
-      val signer = Signature.getInstance("SHA256withECDSA")
-      signer.initSign(key)
-      signer.update(jws.payload.toArray)
-      ByteVector.view(signer.sign())
-    }
-    println(jws.signature.get.decoded.toHex)
-    println(javaSigned.toHex)
     assert(jws.verifySignature(jwk).value, "EC signature check failed")

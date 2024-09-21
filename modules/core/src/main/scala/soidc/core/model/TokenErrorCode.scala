@@ -1,4 +1,4 @@
-package soidc.core.auth
+package soidc.core.model
 
 import soidc.jwt.codec.FromJson
 import soidc.jwt.codec.ToJson

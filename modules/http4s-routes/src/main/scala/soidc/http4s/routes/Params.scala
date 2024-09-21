@@ -1,6 +1,6 @@
 package soidc.http4s.routes
 
-import soidc.core.auth.State
+import soidc.core.model.State
 
 private object Params:
 
