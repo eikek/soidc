@@ -62,12 +62,16 @@ object SimpleClaims:
   given FromJson[SimpleClaims] = FromJson.obj(fromObj)
   given ToJson[SimpleClaims] = ToJson.instance(_.values)
 
-  given StandardClaims[SimpleClaims] =
-    StandardClaims(
+  given StandardClaimsRead[SimpleClaims] =
+    StandardClaimsRead(
       _.notBefore,
       _.expirationTime,
       _.issuer,
       _.subject,
-      _.jwtId,
-      _.withExpirationTime(_)
+      _.jwtId
+    )
+  given StandardClaimsWrite[SimpleClaims] =
+    StandardClaimsWrite(
+      _.withExpirationTime(_),
+      _.withSubject(_)
     )

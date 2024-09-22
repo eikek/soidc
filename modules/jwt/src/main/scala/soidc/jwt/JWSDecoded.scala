@@ -35,7 +35,7 @@ final case class JWSDecoded[H, C](
 
   def validate(key: JWK, currentTime: Instant, timingLeeway: Duration = Duration.Zero)(
       using
-      StandardClaims[C],
+      StandardClaimsRead[C],
       StandardHeader[H]
   ): Validate.Result =
     Validate.validateSignature(key, this) + Validate.validateTime(timingLeeway)(
@@ -47,7 +47,7 @@ final case class JWSDecoded[H, C](
       currentTime: Instant,
       timingLeeway: Duration = Duration.Zero
   )(using
-      StandardClaims[C]
+      StandardClaimsRead[C]
   ): Validate.Result = Validate.validateTime(timingLeeway)(claims, currentTime)
 
 object JWSDecoded:

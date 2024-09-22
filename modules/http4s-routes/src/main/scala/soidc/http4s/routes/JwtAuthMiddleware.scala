@@ -13,7 +13,7 @@ import soidc.core.JwtDecodingValidator.ValidateFailure
 import soidc.core.JwtRefresh
 import soidc.core.JwtValidator
 import soidc.http4s.routes.JwtContext.*
-import soidc.jwt.StandardClaims
+import soidc.jwt.StandardClaimsRead
 import soidc.jwt.codec.ByteDecoder
 
 /** Creates [[org.http4s.server.AuthMiddleware]]s */
@@ -87,7 +87,7 @@ object JwtAuthMiddleware:
           H,
           C
         ]
-    )(using StandardClaims[C], Clock[F]): Builder[F, H, C] =
+    )(using StandardClaimsRead[C], Clock[F]): Builder[F, H, C] =
       val cfg = TokenRefreshMiddleware.Config[F, H, C](v)
       withAuthMiddleware(
         TokenRefreshMiddleware.forAuthenticated[F, H, C](config(cfg))

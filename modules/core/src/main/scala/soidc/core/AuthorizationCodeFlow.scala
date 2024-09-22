@@ -12,14 +12,14 @@ import soidc.jwt.codec.ByteDecoder
 trait AuthorizationCodeFlow[F[_]]:
   /** Return a validator that can verify tokens from this provider. */
   def validator[H, C](using
-      StandardClaims[C],
+      StandardClaimsRead[C],
       StandardHeader[H],
       ByteDecoder[JWKSet]
   ): JwtValidator[F, H, C]
 
   /** Return a refresher to obtain new access tokens. */
   def jwtRefresh[H, C](tokenStore: TokenStore[F, H, C])(using
-      StandardClaims[C],
+      StandardClaimsRead[C],
       ByteDecoder[H],
       ByteDecoder[C]
   ): JwtRefresh[F, H, C]
@@ -128,7 +128,7 @@ object AuthorizationCodeFlow:
       yield token
 
     def validator[H, C](using
-        StandardClaims[C],
+        StandardClaimsRead[C],
         StandardHeader[H],
         ByteDecoder[JWKSet]
     ): JwtValidator[F, H, C] = JwtValidator.selectF[F, H, C] { jws =>
@@ -143,7 +143,7 @@ object AuthorizationCodeFlow:
     }
 
     def jwtRefresh[H, C](tokenStore: TokenStore[F, H, C])(using
-        StandardClaims[C],
+        StandardClaimsRead[C],
         ByteDecoder[H],
         ByteDecoder[C]
     ): JwtRefresh[F, H, C] =
@@ -156,7 +156,7 @@ object AuthorizationCodeFlow:
         secret: ClientSecret,
         oidCfg: OpenIdConfig,
         tokenStore: TokenStore[F, H, C]
-    )(using ByteDecoder[H], ByteDecoder[C], StandardClaims[C]) =
+    )(using ByteDecoder[H], ByteDecoder[C], StandardClaimsRead[C]) =
       val rc = OpenIdRefresh.Config(
         cfg.clientId,
         secret,

@@ -14,7 +14,7 @@ import org.http4s.Response
 import org.http4s.Uri
 import soidc.core.JwtRefresh
 import soidc.jwt.JWSDecoded
-import soidc.jwt.StandardClaims
+import soidc.jwt.StandardClaimsRead
 
 /** Refreshes an existing token if it gets near expiry. */
 object TokenRefreshMiddleware:
@@ -42,7 +42,7 @@ object TokenRefreshMiddleware:
   end Config
 
   def forAuthenticated[F[_]: Monad: Clock, H, C](using
-      StandardClaims[C]
+      StandardClaimsRead[C]
   )(cfg: Config[F, H, C])(routes: JwtAuthRoutes[F, H, C]): JwtAuthRoutes[F, H, C] =
     Kleisli { req =>
       routes(req).semiflatMap { resp =>
@@ -51,7 +51,7 @@ object TokenRefreshMiddleware:
     }
 
   def forMaybeAuthenticated[F[_]: Monad: Clock, H, C](using
-      StandardClaims[C]
+      StandardClaimsRead[C]
   )(
       cfg: Config[F, H, C]
   )(routes: JwtMaybeAuthRoutes[F, H, C]): JwtMaybeAuthRoutes[F, H, C] =
@@ -67,7 +67,7 @@ object TokenRefreshMiddleware:
       cfg: Config[F, H, C],
       token: JWSDecoded[H, C],
       resp: Response[F]
-  )(using StandardClaims[C]) =
+  )(using StandardClaimsRead[C]) =
     expirationClose(token, cfg.expirationGap).flatMap {
       case true =>
         cfg.refresh(token).map { newToken =>
@@ -80,8 +80,8 @@ object TokenRefreshMiddleware:
   private def expirationClose[F[_]: Clock: Applicative, H, C](
       token: JWSDecoded[H, C],
       gap: FiniteDuration
-  )(using StandardClaims[C]): F[Boolean] =
-    StandardClaims[C].expirationTime(token.claims) match
+  )(using sc: StandardClaimsRead[C]): F[Boolean] =
+    sc.expirationTime(token.claims) match
       case None => false.pure[F]
       case Some(exp) =>
         Clock[F].realTimeInstant.map { now =>

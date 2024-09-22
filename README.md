@@ -308,7 +308,7 @@ val validator = JwtValidator
   .openId[IO, JoseHeader, SimpleClaims](cfg, client)
   .map(_.forIssuer(_.startsWith("http://issuer"))) // restrict this to the a known issuer
   .unsafeRunSync()
-// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.JwtValidator$$anon$1@21c488af
+// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.JwtValidator$$anon$1@ad91f4c
 
 validator.validate(jws).unsafeRunSync() == Some(Validate.Result.success)
 // res9: Boolean = true
@@ -420,7 +420,7 @@ val res1 = httpApp.run(badReq).unsafeRunSync()
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@1d97424a
+//    = org.typelevel.vault.Vault@3997dd6a
 // )
 val res2 = httpApp.run(goodReq).unsafeRunSync()
 // res2: Response[[A >: Nothing <: Any] =>> IO[A]] = (
@@ -428,14 +428,12 @@ val res2 = httpApp.run(goodReq).unsafeRunSync()
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Content-Type: text/plain; charset=UTF-8, Content-Length: 2),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@40903af6
+//    = org.typelevel.vault.Vault@5f79d076
 // )
 ```
 
 ## TODO
 
-- refresh token on validation, either use custom key or do the refresh-token dance for openid
-- direct grant
 - check nonce?? requires more in standard-claims :/
 
 ## RFCs

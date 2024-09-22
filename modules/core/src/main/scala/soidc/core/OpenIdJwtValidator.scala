@@ -18,7 +18,7 @@ final class OpenIdJwtValidator[F[_], H, C](
     state: Ref[F, State],
     clock: Clock[F]
 )(using
-    StandardClaims[C],
+    StandardClaimsRead[C],
     StandardHeader[H],
     MonadThrow[F],
     ByteDecoder[OpenIdConfig],
@@ -31,7 +31,7 @@ final class OpenIdJwtValidator[F[_], H, C](
 
   def create: JwtValidator[F, H, C] =
     JwtValidator.selectF[F, H, C] { jws =>
-      StandardClaims[C]
+      StandardClaimsRead[C]
         .issuer(jws.claims)
         .flatMap(s => Uri.fromString(s.value).toOption) match
         case None =>

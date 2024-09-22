@@ -60,7 +60,7 @@ object Validate:
 
   def validateTime[C](
       leeway: Duration
-  )(c: C, currentTime: Instant)(using claims: StandardClaims[C]): Result =
+  )(c: C, currentTime: Instant)(using claims: StandardClaimsRead[C]): Result =
     val min = claims.notBefore(c).map(_.asInstant.minusMillis(leeway.toMillis))
     val max = claims.expirationTime(c).map(_.asInstant.plusMillis(leeway.toMillis))
     val v1 = min.map { nbf =>
@@ -84,11 +84,11 @@ object Validate:
 
   def validateSignature[H, C](keySet: JWKSet, jws: JWSDecoded[H, C])(using
       StandardHeader[H],
-      StandardClaims[C]
+      StandardClaimsRead[C]
   ): Result =
     StandardHeader[H].keyId(jws.header) match
       case None =>
-        val jti = StandardClaims[C].jwtId(jws.claims)
+        val jti = StandardClaimsRead[C].jwtId(jws.claims)
         Result.failed(FailureReason.KeyNotFoundInHeader(jti))
       case Some(key) =>
         keySet.get(key) match

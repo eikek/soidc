@@ -16,13 +16,13 @@ import soidc.jwt.{Uri as _, *}
 
 trait AuthCodeFlow[F[_]]:
   def validator[H, C](using
-      StandardClaims[C],
+      StandardClaimsRead[C],
       StandardHeader[H],
       ByteDecoder[JWKSet]
   ): JwtValidator[F, H, C]
 
   def jwtRefresh[H, C](tokenStore: TokenStore[F, H, C])(using
-      StandardClaims[C],
+      StandardClaimsRead[C],
       ByteDecoder[H],
       ByteDecoder[C]
   ): JwtRefresh[F, H, C]
@@ -77,13 +77,13 @@ object AuthCodeFlow:
       with Http4sClientDsl[F] {
 
     def validator[H, C](using
-        StandardClaims[C],
+        StandardClaimsRead[C],
         StandardHeader[H],
         ByteDecoder[JWKSet]
     ): JwtValidator[F, H, C] = flow.validator[H, C]
 
     def jwtRefresh[H, C](tokenStore: TokenStore[F, H, C])(using
-        StandardClaims[C],
+        StandardClaimsRead[C],
         ByteDecoder[H],
         ByteDecoder[C]
     ): JwtRefresh[F, H, C] = flow.jwtRefresh[H, C](tokenStore)

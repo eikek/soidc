@@ -19,7 +19,7 @@ trait JwtRefresh[F[_], H, C]:
     JwtRefresh.of(in => if (f(in)) refresh(in) else in.pure[F])
 
   def forIssuer(f: String => Boolean)(using
-      sc: StandardClaims[C],
+      sc: StandardClaimsRead[C],
       F: Applicative[F]
   ): JwtRefresh[F, H, C] =
     filter(jws => sc.issuer(jws.claims).map(_.value).exists(f))
@@ -55,10 +55,10 @@ object JwtRefresh:
 
   def extend[F[_]: Clock: MonadThrow, H, C](key: JWK)(
       validity: FiniteDuration
-  )(using ByteEncoder[H], ByteEncoder[C], StandardClaims[C]): JwtRefresh[F, H, C] =
+  )(using ByteEncoder[H], ByteEncoder[C], StandardClaimsWrite[C]): JwtRefresh[F, H, C] =
     modify[F, H, C](
       (_, h) => h,
-      (now, c) => StandardClaims[C].setExpirationTime(c, now + validity)
+      (now, c) => StandardClaimsWrite[C].setExpirationTime(c, now + validity)
     ).andThen(sign[F, H, C](key))
 
   def select[F[_], H, C](

@@ -270,8 +270,6 @@ val res2 = httpApp.run(goodReq).unsafeRunSync()
 
 ## TODO
 
-- refresh token on validation, either use custom key or do the refresh-token dance for openid
-- direct grant
 - check nonce?? requires more in standard-claims :/
 
 ## RFCs

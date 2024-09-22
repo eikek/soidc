@@ -82,7 +82,7 @@ trait JwtValidator[F[_], H, C]:
     * the given function.
     */
   def forIssuer(f: String => Boolean)(using
-      sc: StandardClaims[C],
+      sc: StandardClaimsRead[C],
       F: Applicative[F]
   ): JwtValidator[F, H, C] =
     scoped(jws => sc.issuer(jws.claims).map(_.value).exists(f))
@@ -158,7 +158,7 @@ object JwtValidator:
     pure(Result.notApplicable)
 
   def validateTimingOnly[F[_], H, C](clock: Clock[F], timingLeeway: FiniteDuration)(using
-      StandardClaims[C],
+      StandardClaimsRead[C],
       Monad[F]
   ): JwtValidator[F, H, C] =
     instance(jws =>
@@ -172,7 +172,7 @@ object JwtValidator:
       clock: Clock[F],
       timingLeeway: FiniteDuration
   )(using
-      StandardClaims[C],
+      StandardClaimsRead[C],
       StandardHeader[H],
       Monad[F]
   ): JwtValidator[F, H, C] =
@@ -182,13 +182,13 @@ object JwtValidator:
       jwks: JWKSet,
       clock: Clock[F],
       timingLeeway: FiniteDuration
-  )(using StandardHeader[H], StandardClaims[C], Monad[F]): JwtValidator[F, H, C] =
+  )(using StandardHeader[H], StandardClaimsRead[C], Monad[F]): JwtValidator[F, H, C] =
     validateTimingOnly(clock, timingLeeway) ++ instance(jws =>
       Result.pure(Validate.validateSignature(jwks, jws)).pure[F]
     )
 
   def openId[F[_], H, C](config: OpenIdJwtValidator.Config, client: HttpClient[F])(using
-      StandardClaims[C],
+      StandardClaimsRead[C],
       StandardHeader[H],
       MonadThrow[F],
       ByteDecoder[OpenIdConfig],

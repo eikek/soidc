@@ -21,7 +21,7 @@ object DefaultJwtValidator:
     def enableSignatureValidation: Boolean = !disableSignatureValidation
 
   def apply[F[_], H, C](config: Config, client: HttpClient[F])(using
-      StandardClaims[C],
+      StandardClaimsRead[C],
       StandardHeader[H],
       MonadThrow[F],
       ByteDecoder[OpenIdConfig],
