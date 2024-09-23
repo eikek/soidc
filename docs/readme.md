@@ -268,7 +268,9 @@ val res1 = httpApp.run(badReq).unsafeRunSync()
 val res2 = httpApp.run(goodReq).unsafeRunSync()
 ```
 
-For a more complete example, take a look at the `ExampleServer` class.
+For a more complete example, take a look at the
+[`ExampleServer`](/modules/http4s-routes/src/test/scala/soidc/http4s/routes/ExampleServer.scala)
+class.
 
 ## RFCs
 

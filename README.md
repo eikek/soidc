@@ -308,7 +308,7 @@ val validator = JwtValidator
   .openId[IO, JoseHeader, SimpleClaims](cfg, client)
   .map(_.forIssuer(_.startsWith("http://issuer"))) // restrict this to the a known issuer
   .unsafeRunSync()
-// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.JwtValidator$$anon$1@ad91f4c
+// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.JwtValidator$$anon$1@64c06bab
 
 validator.validate(jws).unsafeRunSync() == Some(Validate.Result.success)
 // res9: Boolean = true
@@ -432,7 +432,9 @@ val res2 = httpApp.run(goodReq).unsafeRunSync()
 // )
 ```
 
-For a more complete example, take a look at the `ExampleServer` class.
+For a more complete example, take a look at the
+[`ExampleServer`](/modules/http4s-routes/src/test/scala/soidc/http4s/routes/ExampleServer.scala)
+class.
 
 ## RFCs
 

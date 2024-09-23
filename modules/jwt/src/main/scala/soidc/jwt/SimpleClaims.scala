@@ -73,5 +73,5 @@ object SimpleClaims:
   given StandardClaimsWrite[SimpleClaims] =
     StandardClaimsWrite(
       _.withExpirationTime(_),
-      _.withSubject(_)
+      _.withIssuer(_)
     )
