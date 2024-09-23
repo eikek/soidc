@@ -45,7 +45,7 @@ object AuthorizationCodeFlow:
       privateKey: JWK,
       nonce: Option[Nonce],
       scope: Option[ScopeList],
-      logger: String => F[Unit]
+      logger: Logger[F]
   )
 
   enum Failure:
@@ -111,7 +111,7 @@ object AuthorizationCodeFlow:
             )
             for
               tokUri <- openIdConfig.map(_.tokenEndpoint)
-              _ <- cfg.logger(
+              _ <- cfg.logger.debug(
                 s"Authentication successful, obtaining access token: $tokUri"
               )
               token <- client.getToken(tokUri, req)
@@ -123,7 +123,7 @@ object AuthorizationCodeFlow:
         TokenRequest.refresh(refreshToken, cfg.clientId, cfg.clientSecret, cfg.scope)
       for
         tokUri <- openIdConfig.map(_.tokenEndpoint)
-        _ <- cfg.logger(s"Refresh access token: $tokUri")
+        _ <- cfg.logger.debug(s"Refresh access token: $tokUri")
         token <- client.getToken(tokUri, req)
       yield token
 
@@ -169,7 +169,7 @@ object AuthorizationCodeFlow:
       case Some(c) => c.pure[F]
       case None =>
         val cfgUri = cfg.providerUri.addPath(".well-known/openid-configuration")
-        cfg.logger(s"Fetch openid-config from $cfgUri") >>
+        cfg.logger.debug(s"Fetch openid-config from $cfgUri") >>
           client.get[OpenIdConfig](cfgUri).flatMap { cfg =>
             flowState.update(_.copy(openidConfig = Some(cfg))).as(cfg)
           }

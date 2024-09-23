@@ -14,25 +14,17 @@ import soidc.http4s.client.Http4sClient
 import soidc.jwt.codec.ByteDecoder
 import soidc.jwt.{Uri as _, *}
 
-trait AuthCodeFlow[F[_]]:
-  def validator[H, C](using
-      StandardClaimsRead[C],
-      StandardHeaderRead[H],
-      ByteDecoder[JWKSet]
-  ): JwtValidator[F, H, C]
+trait AuthCodeFlow[F[_], H, C]:
+  def validator: JwtValidator[F, H, C]
 
-  def jwtRefresh[H, C](tokenStore: TokenStore[F, H, C])(using
-      StandardClaimsRead[C],
-      ByteDecoder[H],
-      ByteDecoder[C]
-  ): JwtRefresh[F, H, C]
+  def jwtRefresh: JwtRefresh[F, H, C]
 
   def routes(
-      cont: Either[ACF.Failure, TokenResponse.Success] => F[Response[F]]
+      cont: AuthCodeFlow.Result[H, C] => F[Response[F]]
   ): HttpRoutes[F]
 
   def run(req: Request[F])(
-      cont: Either[ACF.Failure, TokenResponse.Success] => F[Response[F]]
+      cont: AuthCodeFlow.Result[H, C] => F[Response[F]]
   )(using cats.Functor[F]): F[Response[F]]
 
 object AuthCodeFlow:
@@ -43,13 +35,46 @@ object AuthCodeFlow:
       clientSecret: Option[ClientSecret],
       nonce: Option[Nonce],
       scope: Option[ScopeList],
-      logger: String => F[Unit]
+      logger: Logger[F]
   )
 
-  def apply[F[_]: Sync](cfg: Config[F], client: Client[F])(using
+  type Result[H, C] = Either[Result.Failure, Result.Success[H, C]]
+
+  object Result {
+    def failure[H, C](cause: ACF.Failure): Result[H, C] =
+      Left(Failure.Flow(cause))
+
+    def failure[H, C](cause: JwtError.DecodeError): Result[H, C] =
+      Left(Failure.Decode(cause))
+
+    def success[H, C](jws: JWSDecoded[H, C], resp: TokenResponse.Success): Result[H, C] =
+      Right(Success(jws, resp))
+
+    enum Failure:
+      case Flow(cause: ACF.Failure)
+      case Decode(cause: JwtError.DecodeError)
+
+    final case class Success[H, C](
+        jws: JWSDecoded[H, C],
+        respones: TokenResponse.Success
+    )
+  }
+
+  def apply[F[_]: Sync, H, C](
+      cfg: Config[F],
+      client: Client[F],
+      tokenStore: TokenStore[F, H, C]
+  )(using
       EntityDecoder[F, OpenIdConfig],
-      EntityDecoder[F, TokenResponse]
-  )(using ByteDecoder[TokenResponse], ByteDecoder[OpenIdConfig]): F[AuthCodeFlow[F]] =
+      EntityDecoder[F, TokenResponse],
+      StandardClaimsRead[C],
+      StandardHeaderRead[H],
+      ByteDecoder[TokenResponse],
+      ByteDecoder[OpenIdConfig],
+      ByteDecoder[JWKSet],
+      ByteDecoder[H],
+      ByteDecoder[C]
+  ): F[AuthCodeFlow[F, H, C]] =
     for
       key <- JwkGenerate.symmetric()
       acfCfg = ACF.Config(
@@ -63,48 +88,56 @@ object AuthCodeFlow:
         cfg.logger
       )
       acf <- ACF[F](acfCfg, Http4sClient[F](client))
-    yield new Impl(cfg, acf)
+    yield new Impl(cfg, tokenStore, acf)
 
   private def jwtUri(uri: Uri): soidc.jwt.Uri =
     soidc.jwt.Uri.unsafeFromString(uri.renderString)
 
-  private class Impl[F[_]: Sync](
+  private class Impl[F[_]: Sync, H, C](
       cfg: Config[F],
+      tokenStore: TokenStore[F, H, C],
       flow: ACF[F]
-  )(using EntityDecoder[F, OpenIdConfig], EntityDecoder[F, TokenResponse])
-      extends AuthCodeFlow[F]
+  )(using
+      EntityDecoder[F, OpenIdConfig],
+      EntityDecoder[F, TokenResponse],
+      StandardClaimsRead[C],
+      StandardHeaderRead[H],
+      ByteDecoder[H],
+      ByteDecoder[C],
+      ByteDecoder[JWKSet]
+  ) extends AuthCodeFlow[F, H, C]
       with Http4sDsl[F]
       with Http4sClientDsl[F] {
 
-    def validator[H, C](using
-        StandardClaimsRead[C],
-        StandardHeaderRead[H],
-        ByteDecoder[JWKSet]
-    ): JwtValidator[F, H, C] = flow.validator[H, C]
+    def validator: JwtValidator[F, H, C] = flow.validator[H, C]
 
-    def jwtRefresh[H, C](tokenStore: TokenStore[F, H, C])(using
-        StandardClaimsRead[C],
-        ByteDecoder[H],
-        ByteDecoder[C]
-    ): JwtRefresh[F, H, C] = flow.jwtRefresh[H, C](tokenStore)
+    def jwtRefresh: JwtRefresh[F, H, C] =
+      flow.jwtRefresh[H, C](tokenStore)
 
-    def routes(
-        cont: Either[ACF.Failure, TokenResponse.Success] => F[Response[F]]
-    ): HttpRoutes[F] = HttpRoutes.of {
+    def routes(cont: Result[H, C] => F[Response[F]]): HttpRoutes[F] = HttpRoutes.of {
       case GET -> Root =>
         for
           authUri <- flow.authorizeUrl.map(_.asUri)
-          _ <- cfg.logger(show"Redirect to provider: $authUri")
+          _ <- cfg.logger.debug(show"Redirect to provider: $authUri")
           resp <- TemporaryRedirect(Location(authUri))
         yield resp
 
       case req @ GET -> Root / "resume" :? Params.StateParam(authState) =>
-        flow.obtainToken(req.params).flatMap(cont)
+        flow.obtainToken(req.params).flatMap {
+          case Left(err) => cont(Result.failure(err))
+          case Right(resp) =>
+            resp.accessToken.decode[H, C] match
+              case Left(err) => cont(Result.failure(err))
+              case Right(jws) =>
+                tokenStore.setRefreshTokenIfPresent(jws, resp.refreshToken) >> cont(
+                  Result.success(jws, resp)
+                )
+        }
     }
 
-    def run(req: Request[F])(
-        cont: Either[ACF.Failure, TokenResponse.Success] => F[Response[F]]
-    )(using cats.Functor[F]): F[Response[F]] =
+    def run(req: Request[F])(cont: Result[H, C] => F[Response[F]])(using
+        cats.Functor[F]
+    ): F[Response[F]] =
       val path = Uri.Path(
         req.uri.path.segments.drop(cfg.baseUri.path.segments.size),
         req.uri.path.absolute,
