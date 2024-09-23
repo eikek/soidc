@@ -9,21 +9,7 @@ import soidc.core.model.AuthorizationCodeResponse as ACR
 import soidc.jwt.*
 import soidc.jwt.codec.ByteDecoder
 
-trait AuthorizationCodeFlow[F[_]]:
-  /** Return a validator that can verify tokens from this provider. */
-  def validator[H, C](using
-      StandardClaimsRead[C],
-      StandardHeaderRead[H],
-      ByteDecoder[JWKSet]
-  ): JwtValidator[F, H, C]
-
-  /** Return a refresher to obtain new access tokens. */
-  def jwtRefresh[H, C](tokenStore: TokenStore[F, H, C])(using
-      StandardClaimsRead[C],
-      ByteDecoder[H],
-      ByteDecoder[C]
-  ): JwtRefresh[F, H, C]
-
+trait AuthorizationCodeFlow[F[_], H, C] extends Realm[F, H, C]:
   /** Creates the authorization uri for redirecting the user agent to the auth provider.
     */
   def authorizeUrl: F[Uri]
@@ -37,15 +23,14 @@ trait AuthorizationCodeFlow[F[_]]:
   def runRefreshRequest(refreshToken: JWS): F[TokenResponse]
 
 object AuthorizationCodeFlow:
-  final case class Config[F[_]](
+  final case class Config(
       clientId: ClientId,
       clientSecret: Option[ClientSecret],
       redirectUri: Uri,
       providerUri: Uri,
       privateKey: JWK,
       nonce: Option[Nonce],
-      scope: Option[ScopeList],
-      logger: Logger[F]
+      scope: Option[ScopeList]
   )
 
   enum Failure:
@@ -53,25 +38,39 @@ object AuthorizationCodeFlow:
     case Token(cause: TokenResponse.Error)
     case StateMismatch
 
-  def apply[F[_]](
-      cfg: Config[F],
-      client: HttpClient[F]
+  def apply[F[_], H, C](
+      cfg: Config,
+      client: HttpClient[F],
+      tokenStore: TokenStore[F, H, C],
+      logger: Logger[F]
   )(using
+      StandardClaimsRead[C],
+      StandardHeaderRead[H],
       ByteDecoder[OpenIdConfig],
       ByteDecoder[TokenResponse],
+      ByteDecoder[JWKSet],
+      ByteDecoder[H],
+      ByteDecoder[C],
       Sync[F]
-  ): F[AuthorizationCodeFlow[F]] =
-    Ref[F].of(FlowState()).map(new Impl(cfg, client, _))
+  ): F[AuthorizationCodeFlow[F, H, C]] =
+    Ref[F].of(FlowState()).map(new Impl(cfg, client, tokenStore, logger, _))
 
-  private class Impl[F[_]](
-      cfg: Config[F],
+  private class Impl[F[_], H, C](
+      cfg: Config,
       client: HttpClient[F],
+      tokenStore: TokenStore[F, H, C],
+      logger: Logger[F],
       flowState: Ref[F, FlowState]
   )(using
+      StandardClaimsRead[C],
+      StandardHeaderRead[H],
       ByteDecoder[OpenIdConfig],
       ByteDecoder[TokenResponse],
+      ByteDecoder[JWKSet],
+      ByteDecoder[H],
+      ByteDecoder[C],
       Sync[F]
-  ) extends AuthorizationCodeFlow[F] {
+  ) extends AuthorizationCodeFlow[F, H, C] {
     def authorizeUrl: F[Uri] =
       for
         randomState <- State.randomSigned[F](cfg.privateKey)
@@ -111,7 +110,7 @@ object AuthorizationCodeFlow:
             )
             for
               tokUri <- openIdConfig.map(_.tokenEndpoint)
-              _ <- cfg.logger.debug(
+              _ <- logger.debug(
                 s"Authentication successful, obtaining access token: $tokUri"
               )
               token <- client.getToken(tokUri, req)
@@ -123,15 +122,11 @@ object AuthorizationCodeFlow:
         TokenRequest.refresh(refreshToken, cfg.clientId, cfg.clientSecret, cfg.scope)
       for
         tokUri <- openIdConfig.map(_.tokenEndpoint)
-        _ <- cfg.logger.debug(s"Refresh access token: $tokUri")
+        _ <- logger.debug(s"Refresh access token: $tokUri")
         token <- client.getToken(tokUri, req)
       yield token
 
-    def validator[H, C](using
-        StandardClaimsRead[C],
-        StandardHeaderRead[H],
-        ByteDecoder[JWKSet]
-    ): JwtValidator[F, H, C] = JwtValidator.selectF[F, H, C] { jws =>
+    def validator: JwtValidator[F, H, C] = JwtValidator.selectF[F, H, C] { jws =>
       openIdConfig.flatMap { c =>
         val valCfg = OpenIdJwtValidator
           .Config()
@@ -142,21 +137,13 @@ object AuthorizationCodeFlow:
       }
     }
 
-    def jwtRefresh[H, C](tokenStore: TokenStore[F, H, C])(using
-        StandardClaimsRead[C],
-        ByteDecoder[H],
-        ByteDecoder[C]
-    ): JwtRefresh[F, H, C] =
+    def jwtRefresh: JwtRefresh[F, H, C] =
       cfg.clientSecret match
         case None => JwtRefresh.passthrough[F, H, C]
         case Some(secret) =>
-          JwtRefresh.liftF(openIdConfig.map(mkOpenidRefresh(secret, _, tokenStore)))
+          JwtRefresh.liftF(openIdConfig.map(mkOpenidRefresh(secret, _)))
 
-    def mkOpenidRefresh[H, C](
-        secret: ClientSecret,
-        oidCfg: OpenIdConfig,
-        tokenStore: TokenStore[F, H, C]
-    )(using ByteDecoder[H], ByteDecoder[C], StandardClaimsRead[C]) =
+    def mkOpenidRefresh(secret: ClientSecret, oidCfg: OpenIdConfig) =
       val rc = OpenIdRefresh.Config(
         cfg.clientId,
         secret,
@@ -169,7 +156,7 @@ object AuthorizationCodeFlow:
       case Some(c) => c.pure[F]
       case None =>
         val cfgUri = cfg.providerUri.addPath(".well-known/openid-configuration")
-        cfg.logger.debug(s"Fetch openid-config from $cfgUri") >>
+        logger.debug(s"Fetch openid-config from $cfgUri") >>
           client.get[OpenIdConfig](cfgUri).flatMap { cfg =>
             flowState.update(_.copy(openidConfig = Some(cfg))).as(cfg)
           }

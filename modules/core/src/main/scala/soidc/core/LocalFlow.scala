@@ -10,7 +10,7 @@ import soidc.jwt.*
 import soidc.jwt.codec.ByteEncoder
 
 /** Combines functionality for supporting a local user database for convenience. */
-trait LocalFlow[F[_], H, C]:
+trait LocalFlow[F[_], H, C] extends Realm[F, H, C]:
   /** Return a validator that can verify tokens from this provider. */
   def validator: JwtValidator[F, H, C]
 

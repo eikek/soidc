@@ -13,6 +13,7 @@ import soidc.core.JwtDecodingValidator.ValidateFailure
 import soidc.core.JwtRefresh
 import soidc.core.JwtValidator
 import soidc.http4s.routes.JwtContext.*
+import soidc.http4s.routes.TokenRefreshMiddleware.Config as RefreshConfig
 import soidc.jwt.StandardClaimsRead
 import soidc.jwt.codec.ByteDecoder
 
@@ -82,11 +83,7 @@ object JwtAuthMiddleware:
 
     def withRefresh(
         v: JwtRefresh[F, H, C],
-        config: TokenRefreshMiddleware.Config[F, H, C] => TokenRefreshMiddleware.Config[
-          F,
-          H,
-          C
-        ]
+        config: RefreshConfig[F, H, C] => RefreshConfig[F, H, C]
     )(using StandardClaimsRead[C], Clock[F]): Builder[F, H, C] =
       val cfg = TokenRefreshMiddleware.Config[F, H, C](v)
       withAuthMiddleware(

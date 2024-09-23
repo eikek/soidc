@@ -27,17 +27,19 @@ object ExampleServer extends IOApp:
   type OpenIdFlow = AuthCodeFlow[IO, JoseHeader, SimpleClaims]
   type Authenticated = JwtContext.Authenticated[JoseHeader, SimpleClaims]
   type MaybeAuthenticated = JwtContext.MaybeAuthenticated[JoseHeader, SimpleClaims]
+  type ExampleAppRealm = Realm[IO, JoseHeader, SimpleClaims]
 
   // local users
-  val localFlow: LocalUserFlow =
-    LocalFlow[IO, JoseHeader, SimpleClaims](
-      LocalFlow.Config(
-        issuer = StringOrUri("example-app-local"),
-        secretKey =
-          JWK.symmetric(Base64String.encodeString("server-secret"), Algorithm.HS256),
-        sessionValidTime = 10.minutes
+  val localFlow: IO[LocalUserFlow] =
+    JwkGenerate.symmetric[IO](16).map { key =>
+      LocalFlow[IO, JoseHeader, SimpleClaims](
+        LocalFlow.Config(
+          issuer = StringOrUri("example-app-local"),
+          secretKey = key,
+          sessionValidTime = 10.minutes
+        )
       )
-    )
+    }
 
   // OpenID Auth-Code-Flow with keycloak
   def authCodeFlow(
@@ -45,7 +47,7 @@ object ExampleServer extends IOApp:
       tokenStore: TokenStore[IO, JoseHeader, SimpleClaims]
   ): IO[OpenIdFlow] =
     AuthCodeFlow[IO, JoseHeader, SimpleClaims](
-      AuthCodeFlow.Config[IO](
+      AuthCodeFlow.Config(
         ClientId("example"),
         uri"http://soidccnt:8180/realms/master", // keycloak realm
         uri"http://localhost:8888/login/keycloak", // where login route is mounted
@@ -53,22 +55,25 @@ object ExampleServer extends IOApp:
           "8CCr3yFDuMl3L0MgNSICXgELvuabi5si"
         ).some, // Fa9PRaVrgBZ4DmmwReU7bNEycNyxqGRu
         Some(Nonce(hex"caffee")),
-        Some(ScopeList(Scope.Email, Scope.Profile)),
-        Logger.stderr[IO]
+        Some(ScopeList(Scope.Email, Scope.Profile))
       ),
       client,
-      tokenStore
+      tokenStore,
+      Logger.stderr[IO]
     )
 
-  def withAuth(
-      validator: JwtValidator[IO, JoseHeader, SimpleClaims],
-      refresh: JwtRefresh[IO, JoseHeader, SimpleClaims]
-  ) = JwtAuthMiddleware
+  /** Builds a middleware for authenticating requests based on a provided JWT token
+    * (either via cookie or the Authorization header).
+    */
+  def withAuth(realm: ExampleAppRealm) = JwtAuthMiddleware
     .builder[IO, JoseHeader, SimpleClaims]
     .withGeToken(GetToken.anyOf(GetToken.cookie("auth_cookie"), GetToken.bearer))
     .withOnInvalidToken(IO.println)
-    .withValidator(validator)
-    .withRefresh(refresh, _.updateCookie("auth_cookie", uri"http://localhost:8888"))
+    .withValidator(realm.validator)
+    .withRefresh(
+      realm.jwtRefresh,
+      _.updateCookie("auth_cookie", uri"http://localhost:8888")
+    )
 
   final case class UserPass(user: String, pass: String)
   object UserPassParam {
@@ -79,91 +84,85 @@ object ExampleServer extends IOApp:
       yield UserPass(un, pw)
   }
 
-  def loginRoute(
-      codeFlow: AuthCodeFlow[IO, JoseHeader, SimpleClaims]
-  ): HttpRoutes[IO] = HttpRoutes.of {
-    case req @ GET -> "keycloak" /: _ =>
-      codeFlow.run(req) {
-        case Left(err) => UnprocessableEntity(err.toString())
-        case Right(AuthCodeFlow.Result.Success(at, tokenResp)) =>
-          for
-            resp <- Ok(at.toString)
-            rr = resp
-              .putHeaders("Auth-Token" -> at.compact)
-              .addCookie(
-                JwtCookie
-                  .create(
-                    "auth_cookie",
-                    at.jws,
-                    uri"http://localhost:8888/"
-                  )
-                  .copy(maxAge = at.claims.expirationTime.map(_.toSeconds))
-              )
-          yield rr
-      }
+  def loginRoute(codeFlow: OpenIdFlow, localFlow: LocalUserFlow): HttpRoutes[IO] =
+    HttpRoutes.of {
+      case req @ GET -> "keycloak" /: _ =>
+        codeFlow.run(req) {
+          case Left(err) => UnprocessableEntity(err.toString())
+          case Right(AuthCodeFlow.Result.Success(at, tokenResp)) =>
+            for
+              resp <- Ok(at.toString)
+              rr = resp
+                .putHeaders("Auth-Token" -> at.compact)
+                .addCookie(
+                  JwtCookie
+                    .create("auth_cookie", at.jws, uri"http://localhost:8888/")
+                    .copy(maxAge = at.claims.expirationTime.map(_.toSeconds))
+                )
+            yield rr
+        }
 
-    case GET -> Root / "local" :? UserPassParam(name, pass) =>
-      if (pass != "secret") BadRequest("login failed")
-      else
-        for
-          token <- localFlow.createToken(
-            JoseHeader.jwt,
-            SimpleClaims.empty.withSubject(StringOrUri(name))
-          )
-          res <- Ok(s"welcome $name")
-        yield res
-          .putHeaders("Auth-Token" -> token.jws.compact)
-          .addCookie(
-            JwtCookie
-              .create("auth_cookie", token.jws, uri"http://localhost:8888/")
-              .copy(maxAge = token.claims.expirationTime.map(_.toSeconds))
-          )
-  }
+      case GET -> Root / "local" :? UserPassParam(name, pass) =>
+        if (pass != "secret") BadRequest("login failed")
+        else
+          for
+            token <- localFlow.createToken(
+              JoseHeader.jwt,
+              SimpleClaims.empty.withSubject(StringOrUri(name))
+            )
+            res <- Ok(s"welcome $name")
+          yield res
+            .putHeaders("Auth-Token" -> token.jws.compact)
+            .addCookie(
+              JwtCookie
+                .create("auth_cookie", token.jws, uri"http://localhost:8888/")
+                .copy(maxAge = token.claims.expirationTime.map(_.toSeconds))
+            )
+    }
 
   def memberRoutes = AuthedRoutes.of[Authenticated, IO] {
     case ContextRequest(token, GET -> Root / "test") =>
-      Ok(s"welcome back, ${token.claims.subject}")
+      Ok(
+        s"welcome back, ${token.claims.subject}, valid until ${token.claims.expirationTime
+            .map(_.asInstant)}"
+      )
   }
 
   def maybeMember = AuthedRoutes.of[MaybeAuthenticated, IO] {
     case ContextRequest(token, req @ GET -> Root / "test") =>
-      token.claims.flatMap(_.subject) match
-        case Some(s) => Ok(s"hello $s!!")
-        case None    => Ok("Hello anonymous stranger!")
+      token.claims match
+        case Some(c) =>
+          Ok(
+            s"hello ${c.subject}!! You have time until ${c.expirationTime.map(_.asInstant)}"
+          )
+        case None => Ok("Hello anonymous stranger!")
   }
 
-  def routes(
-      client: Client[IO],
-      codeFlow: AuthCodeFlow[IO, JoseHeader, SimpleClaims]
-  ) =
-    val auth = withAuth(
-      localFlow.validator.orElse(codeFlow.validator),
-      codeFlow.jwtRefresh.andThen(localFlow.jwtRefresh)
-    )
+  def routes(openId: OpenIdFlow, local: LocalUserFlow) =
+    val auth = withAuth(local.or(openId))
     Router(
-      "login" -> loginRoute(codeFlow),
+      "login" -> loginRoute(openId, local),
       "member" -> auth.secured(memberRoutes),
       "open" -> auth.optional(maybeMember)
     )
 
   def run(args: List[String]): IO[ExitCode] =
     EmberClientBuilder.default[IO].build.use { client =>
-      TokenStore
-        .memory[IO, JoseHeader, SimpleClaims]
-        .flatMap(authCodeFlow(client, _))
-        .flatMap { codeFlow =>
-          EmberServerBuilder
-            .default[IO]
-            .withHost(host"0.0.0.0")
-            .withPort(port"8888")
-            .withHttpApp(routes(client, codeFlow).orNotFound)
-            .withShutdownTimeout(Duration.Zero)
-            .withErrorHandler { ex =>
-              IO.blocking(ex.printStackTrace())
-                .as(Response(status = Status.InternalServerError))
-            }
-            .build
-            .use(_ => Console[IO].readLine)
-            .as(ExitCode.Success)
-        }
+      for
+        tokenStore <- TokenStore.memory[IO, JoseHeader, SimpleClaims]
+        openId <- authCodeFlow(client, tokenStore)
+        local <- localFlow
+        server <- EmberServerBuilder
+          .default[IO]
+          .withHost(host"0.0.0.0")
+          .withPort(port"8888")
+          .withHttpApp(routes(openId, local).orNotFound)
+          .withShutdownTimeout(Duration.Zero)
+          .withErrorHandler { ex =>
+            IO.blocking(ex.printStackTrace())
+              .as(Response(status = Status.InternalServerError))
+          }
+          .build
+          .use(_ => Console[IO].readLine)
+      yield ExitCode.Success
     }

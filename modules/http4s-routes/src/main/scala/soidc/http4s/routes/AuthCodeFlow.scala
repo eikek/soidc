@@ -14,11 +14,7 @@ import soidc.http4s.client.Http4sClient
 import soidc.jwt.codec.ByteDecoder
 import soidc.jwt.{Uri as _, *}
 
-trait AuthCodeFlow[F[_], H, C]:
-  def validator: JwtValidator[F, H, C]
-
-  def jwtRefresh: JwtRefresh[F, H, C]
-
+trait AuthCodeFlow[F[_], H, C] extends Realm[F, H, C]:
   def routes(
       cont: AuthCodeFlow.Result[H, C] => F[Response[F]]
   ): HttpRoutes[F]
@@ -28,14 +24,13 @@ trait AuthCodeFlow[F[_], H, C]:
   )(using cats.Functor[F]): F[Response[F]]
 
 object AuthCodeFlow:
-  final case class Config[F[_]](
+  final case class Config(
       clientId: ClientId,
       providerUri: Uri,
       baseUri: Uri,
       clientSecret: Option[ClientSecret],
       nonce: Option[Nonce],
-      scope: Option[ScopeList],
-      logger: Logger[F]
+      scope: Option[ScopeList]
   )
 
   type Result[H, C] = Either[Result.Failure, Result.Success[H, C]]
@@ -61,9 +56,10 @@ object AuthCodeFlow:
   }
 
   def apply[F[_]: Sync, H, C](
-      cfg: Config[F],
+      cfg: Config,
       client: Client[F],
-      tokenStore: TokenStore[F, H, C]
+      tokenStore: TokenStore[F, H, C],
+      logger: Logger[F]
   )(using
       EntityDecoder[F, OpenIdConfig],
       EntityDecoder[F, TokenResponse],
@@ -84,19 +80,19 @@ object AuthCodeFlow:
         jwtUri(cfg.providerUri),
         key,
         cfg.nonce,
-        cfg.scope,
-        cfg.logger
+        cfg.scope
       )
-      acf <- ACF[F](acfCfg, Http4sClient[F](client))
-    yield new Impl(cfg, tokenStore, acf)
+      acf <- ACF[F, H, C](acfCfg, Http4sClient[F](client), tokenStore, logger)
+    yield new Impl(cfg, tokenStore, logger, acf)
 
   private def jwtUri(uri: Uri): soidc.jwt.Uri =
     soidc.jwt.Uri.unsafeFromString(uri.renderString)
 
   private class Impl[F[_]: Sync, H, C](
-      cfg: Config[F],
+      cfg: Config,
       tokenStore: TokenStore[F, H, C],
-      flow: ACF[F]
+      logger: Logger[F],
+      flow: ACF[F, H, C]
   )(using
       EntityDecoder[F, OpenIdConfig],
       EntityDecoder[F, TokenResponse],
@@ -109,16 +105,14 @@ object AuthCodeFlow:
       with Http4sDsl[F]
       with Http4sClientDsl[F] {
 
-    def validator: JwtValidator[F, H, C] = flow.validator[H, C]
-
-    def jwtRefresh: JwtRefresh[F, H, C] =
-      flow.jwtRefresh[H, C](tokenStore)
+    def validator: JwtValidator[F, H, C] = flow.validator
+    def jwtRefresh: JwtRefresh[F, H, C] = flow.jwtRefresh
 
     def routes(cont: Result[H, C] => F[Response[F]]): HttpRoutes[F] = HttpRoutes.of {
       case GET -> Root =>
         for
           authUri <- flow.authorizeUrl.map(_.asUri)
-          _ <- cfg.logger.debug(show"Redirect to provider: $authUri")
+          _ <- logger.debug(show"Redirect to provider: $authUri")
           resp <- TemporaryRedirect(Location(authUri))
         yield resp
 
