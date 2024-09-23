@@ -13,7 +13,7 @@ trait AuthorizationCodeFlow[F[_]]:
   /** Return a validator that can verify tokens from this provider. */
   def validator[H, C](using
       StandardClaimsRead[C],
-      StandardHeader[H],
+      StandardHeaderRead[H],
       ByteDecoder[JWKSet]
   ): JwtValidator[F, H, C]
 
@@ -129,7 +129,7 @@ object AuthorizationCodeFlow:
 
     def validator[H, C](using
         StandardClaimsRead[C],
-        StandardHeader[H],
+        StandardHeaderRead[H],
         ByteDecoder[JWKSet]
     ): JwtValidator[F, H, C] = JwtValidator.selectF[F, H, C] { jws =>
       openIdConfig.flatMap { c =>

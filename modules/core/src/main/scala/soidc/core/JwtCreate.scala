@@ -41,16 +41,22 @@ object JwtCreate:
       }
       .rethrow
 
-  def default[F[_]: Clock: MonadThrow](
+  def default[F[_]: Clock: MonadThrow, H, C](
       key: JWK,
       validity: FiniteDuration,
-      modify: SimpleClaims => SimpleClaims
+      header: H,
+      claims: C
   )(using
-      ByteEncoder[JoseHeader],
-      ByteEncoder[SimpleClaims]
-  ): F[JWSDecoded[JoseHeader, SimpleClaims]] =
-    of[F, JoseHeader, SimpleClaims](
+      ByteEncoder[H],
+      ByteEncoder[C],
+      StandardHeaderWrite[H],
+      StandardClaimsWrite[C]
+  ): F[JWSDecoded[H, C]] =
+    of[F, H, C](
       key,
-      _ => key.algorithm.map(JoseHeader.jwt.withAlgorithm).getOrElse(JoseHeader.jwt),
-      now => modify(SimpleClaims.empty.withExpirationTime(now + validity))
+      now =>
+        key.algorithm
+          .map(StandardHeaderWrite[H].setAlgorithm(header, _))
+          .getOrElse(header),
+      now => StandardClaimsWrite[C].setExpirationTime(claims, now + validity)
     )

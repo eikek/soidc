@@ -19,7 +19,7 @@ final class OpenIdJwtValidator[F[_], H, C](
     clock: Clock[F]
 )(using
     StandardClaimsRead[C],
-    StandardHeader[H],
+    StandardHeaderRead[H],
     MonadThrow[F],
     ByteDecoder[OpenIdConfig],
     ByteDecoder[JWKSet]

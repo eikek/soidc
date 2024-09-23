@@ -22,7 +22,7 @@ object DefaultJwtValidator:
 
   def apply[F[_], H, C](config: Config, client: HttpClient[F])(using
       StandardClaimsRead[C],
-      StandardHeader[H],
+      StandardHeaderRead[H],
       MonadThrow[F],
       ByteDecoder[OpenIdConfig],
       ByteDecoder[JWKSet],

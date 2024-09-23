@@ -68,5 +68,8 @@ object JoseHeader:
   given FromJson[JoseHeader] = FromJson.obj(fromObj)
   given ToJson[JoseHeader] = ToJson.instance(_.values)
 
-  given StandardHeader[JoseHeader] =
-    StandardHeader(_.keyId, _.algorithm)
+  given StandardHeaderRead[JoseHeader] =
+    StandardHeaderRead(_.keyId, _.algorithm)
+
+  given StandardHeaderWrite[JoseHeader] =
+    StandardHeaderWrite(_.withAlgorithm(_))

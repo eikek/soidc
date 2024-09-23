@@ -72,9 +72,9 @@ object Validate:
     v1.getOrElse(Result.success) + v2.getOrElse(Result.success)
 
   def validateSignature[H, C](key: JWK, jws: JWSDecoded[H, C])(using
-      StandardHeader[H]
+      StandardHeaderRead[H]
   ): Result =
-    val jwsAlg = StandardHeader[H].algorithm(jws.header)
+    val jwsAlg = StandardHeaderRead[H].algorithm(jws.header)
     if (key.algorithm != jwsAlg)
       Result.failed(FailureReason.AlgorithmMismatch(key.algorithm, jwsAlg))
     else
@@ -83,10 +83,10 @@ object Validate:
         case Left(err)     => Result.failed(FailureReason.SignatureVerifyError(err))
 
   def validateSignature[H, C](keySet: JWKSet, jws: JWSDecoded[H, C])(using
-      StandardHeader[H],
+      StandardHeaderRead[H],
       StandardClaimsRead[C]
   ): Result =
-    StandardHeader[H].keyId(jws.header) match
+    StandardHeaderRead[H].keyId(jws.header) match
       case None =>
         val jti = StandardClaimsRead[C].jwtId(jws.claims)
         Result.failed(FailureReason.KeyNotFoundInHeader(jti))

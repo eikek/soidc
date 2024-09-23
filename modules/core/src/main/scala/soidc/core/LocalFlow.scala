@@ -1,29 +1,69 @@
 package soidc.core
 
+import scala.concurrent.duration.Duration
 import scala.concurrent.duration.FiniteDuration
 
-import soidc.jwt.*
-import soidc.jwt.codec.ByteDecoder
+import cats.MonadThrow
+import cats.effect.*
 
+import soidc.jwt.*
+import soidc.jwt.codec.ByteEncoder
+
+/** Combines functionality for supporting a local user database for convenience. */
 trait LocalFlow[F[_], H, C]:
   /** Return a validator that can verify tokens from this provider. */
-  def validator(using
-      StandardClaims[C],
-      StandardHeader[H],
-      ByteDecoder[JWKSet]
-  ): JwtValidator[F, H, C]
+  def validator: JwtValidator[F, H, C]
 
   /** Return a refresher to obtain new access tokens. */
-  def jwtRefresh(using
-      StandardClaims[C],
-      ByteDecoder[H],
-      ByteDecoder[C]
-  ): JwtRefresh[F, H, C]
+  def jwtRefresh: JwtRefresh[F, H, C]
+
+  /** Creates a now token for the given data */
+  def createToken(header: H, claims: C): F[JWSDecoded[H, C]]
 
 object LocalFlow:
 
   final case class Config(
-      issuer: String,
+      issuer: StringOrUri,
       secretKey: JWK,
       sessionValidTime: FiniteDuration
   )
+
+  def apply[F[_]: Clock: MonadThrow, H, C](cfg: Config)(using
+      StandardHeaderRead[H],
+      StandardHeaderWrite[H],
+      StandardClaimsRead[C],
+      StandardClaimsWrite[C],
+      ByteEncoder[H],
+      ByteEncoder[C]
+  ): LocalFlow[F, H, C] = new Impl[F, H, C](cfg)
+
+  private class Impl[F[_]: Clock: MonadThrow, H, C](cfg: Config)(using
+      StandardHeaderRead[H],
+      StandardHeaderWrite[H],
+      StandardClaimsRead[C],
+      StandardClaimsWrite[C],
+      ByteEncoder[H],
+      ByteEncoder[C]
+  ) extends LocalFlow[F, H, C] {
+    def validator: JwtValidator[F, H, C] =
+      JwtValidator
+        .validateWithKey[F, H, C](
+          cfg.secretKey,
+          Clock[F],
+          Duration.Zero
+        )
+        .forIssuer(_ == cfg.issuer.value)
+
+    def jwtRefresh: JwtRefresh[F, H, C] =
+      JwtRefresh
+        .extend[F, H, C](cfg.secretKey)(cfg.sessionValidTime)
+        .forIssuer(_ == cfg.issuer.value)
+
+    def createToken(header: H, claims: C): F[JWSDecoded[H, C]] =
+      JwtCreate.default[F, H, C](
+        cfg.secretKey,
+        cfg.sessionValidTime,
+        header,
+        StandardClaimsWrite[C].setIssuer(claims, cfg.issuer)
+      )
+  }

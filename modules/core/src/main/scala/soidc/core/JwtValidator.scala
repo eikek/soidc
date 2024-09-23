@@ -173,7 +173,7 @@ object JwtValidator:
       timingLeeway: FiniteDuration
   )(using
       StandardClaimsRead[C],
-      StandardHeader[H],
+      StandardHeaderRead[H],
       Monad[F]
   ): JwtValidator[F, H, C] =
     instance(jws => clock.realTimeInstant.map(jws.validate(jwk, _, timingLeeway).some))
@@ -182,14 +182,14 @@ object JwtValidator:
       jwks: JWKSet,
       clock: Clock[F],
       timingLeeway: FiniteDuration
-  )(using StandardHeader[H], StandardClaimsRead[C], Monad[F]): JwtValidator[F, H, C] =
+  )(using StandardHeaderRead[H], StandardClaimsRead[C], Monad[F]): JwtValidator[F, H, C] =
     validateTimingOnly(clock, timingLeeway) ++ instance(jws =>
       Result.pure(Validate.validateSignature(jwks, jws)).pure[F]
     )
 
   def openId[F[_], H, C](config: OpenIdJwtValidator.Config, client: HttpClient[F])(using
       StandardClaimsRead[C],
-      StandardHeader[H],
+      StandardHeaderRead[H],
       MonadThrow[F],
       ByteDecoder[OpenIdConfig],
       ByteDecoder[JWKSet],

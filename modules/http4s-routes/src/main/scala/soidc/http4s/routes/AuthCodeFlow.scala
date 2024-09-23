@@ -17,7 +17,7 @@ import soidc.jwt.{Uri as _, *}
 trait AuthCodeFlow[F[_]]:
   def validator[H, C](using
       StandardClaimsRead[C],
-      StandardHeader[H],
+      StandardHeaderRead[H],
       ByteDecoder[JWKSet]
   ): JwtValidator[F, H, C]
 
@@ -78,7 +78,7 @@ object AuthCodeFlow:
 
     def validator[H, C](using
         StandardClaimsRead[C],
-        StandardHeader[H],
+        StandardHeaderRead[H],
         ByteDecoder[JWKSet]
     ): JwtValidator[F, H, C] = flow.validator[H, C]
 

@@ -23,21 +23,14 @@ import soidc.jwt.{Uri as _, *}
 
 object ExampleServer extends IOApp:
   // local users
-  val serverSecret =
-    JWK.symmetric(Base64String.encodeString("server-secret"), Algorithm.HS256)
-  val sessionValid = 10.minutes
-  val localIssuer = "example-app"
-  val localValidator = JwtValidator
-    .validateWithKey[IO, JoseHeader, SimpleClaims](
-      serverSecret,
-      Clock[IO],
-      Duration.Zero
+  val localFlow = LocalFlow[IO, JoseHeader, SimpleClaims](
+    LocalFlow.Config(
+      issuer = StringOrUri("example-app-local"),
+      secretKey =
+        JWK.symmetric(Base64String.encodeString("server-secret"), Algorithm.HS256),
+      sessionValidTime = 10.minutes
     )
-    .forIssuer(_ == localIssuer)
-  val localRefresh =
-    JwtRefresh
-      .extend[IO, JoseHeader, SimpleClaims](serverSecret)(sessionValid)
-      .forIssuer(_ == localIssuer)
+  )
 
   // OpenID Auth-Code-Flow with keycloak
   def authCodeFlow(client: Client[IO]) = AuthCodeFlow[IO](
@@ -108,10 +101,9 @@ object ExampleServer extends IOApp:
       if (pass != "secret") BadRequest("login failed")
       else
         for
-          token <- JwtCreate.default[IO](
-            serverSecret,
-            sessionValid,
-            _.withIssuer(StringOrUri(localIssuer)).withSubject(StringOrUri(name))
+          token <- localFlow.createToken(
+            JoseHeader.jwt,
+            SimpleClaims.empty.withSubject(StringOrUri(name))
           )
           res <- Ok(s"welcome $name")
         yield res
@@ -141,8 +133,8 @@ object ExampleServer extends IOApp:
       tokenStore: TokenStore[IO, JoseHeader, SimpleClaims]
   ) =
     val auth = withAuth(
-      localValidator.orElse(codeFlow.validator[JoseHeader, SimpleClaims]),
-      codeFlow.jwtRefresh(tokenStore).andThen(localRefresh)
+      localFlow.validator.orElse(codeFlow.validator[JoseHeader, SimpleClaims]),
+      codeFlow.jwtRefresh(tokenStore).andThen(localFlow.jwtRefresh)
     )
     Router(
       "login" -> loginRoute(codeFlow, tokenStore),
