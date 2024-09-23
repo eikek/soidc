@@ -420,7 +420,7 @@ val res1 = httpApp.run(badReq).unsafeRunSync()
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@3997dd6a
+//    = org.typelevel.vault.Vault@2b324335
 // )
 val res2 = httpApp.run(goodReq).unsafeRunSync()
 // res2: Response[[A >: Nothing <: Any] =>> IO[A]] = (
@@ -428,13 +428,11 @@ val res2 = httpApp.run(goodReq).unsafeRunSync()
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Content-Type: text/plain; charset=UTF-8, Content-Length: 2),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@5f79d076
+//    = org.typelevel.vault.Vault@741a14e4
 // )
 ```
 
-## TODO
-
-- check nonce?? requires more in standard-claims :/
+For a more complete example, take a look at the `ExampleServer` class.
 
 ## RFCs
 

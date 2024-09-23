@@ -268,9 +268,7 @@ val res1 = httpApp.run(badReq).unsafeRunSync()
 val res2 = httpApp.run(goodReq).unsafeRunSync()
 ```
 
-## TODO
-
-- check nonce?? requires more in standard-claims :/
+For a more complete example, take a look at the `ExampleServer` class.
 
 ## RFCs
 
