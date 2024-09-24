@@ -51,7 +51,6 @@ object AuthCodeFlow:
   def apply[F[_]: Sync, H, C](
       cfg: Config,
       acf: ACF[F, H, C],
-      tokenStore: TokenStore[F, H, C],
       logger: Logger[F]
   )(using
       EntityDecoder[F, OpenIdConfig],
@@ -63,14 +62,13 @@ object AuthCodeFlow:
       ByteDecoder[C]
   ): F[AuthCodeFlow[F, H, C]] =
     for key <- JwkGenerate.symmetric()
-    yield new Impl(cfg, tokenStore, logger, acf)
+    yield new Impl(cfg, logger, acf)
 
   // private def jwtUri(uri: Uri): soidc.jwt.Uri =
   //   soidc.jwt.Uri.unsafeFromString(uri.renderString)
 
   private class Impl[F[_]: Sync, H, C](
       cfg: Config,
-      tokenStore: TokenStore[F, H, C],
       logger: Logger[F],
       flow: ACF[F, H, C]
   )(using
@@ -103,7 +101,7 @@ object AuthCodeFlow:
             resp.accessToken.decode[H, C] match
               case Left(err) => cont(Result.failure(err))
               case Right(jws) =>
-                tokenStore.setRefreshTokenIfPresent(jws, resp.refreshToken) >> cont(
+                flow.tokenStore.setRefreshTokenIfPresent(jws, resp.refreshToken) >> cont(
                   Result.success(jws, resp)
                 )
         }

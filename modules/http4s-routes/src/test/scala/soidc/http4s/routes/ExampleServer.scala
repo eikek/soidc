@@ -62,7 +62,7 @@ object ExampleServer extends IOApp:
       )
       logger = Logger.stderr[IO]
       acf <- ACF(acfCfg, Http4sClient(client), tokenStore, logger)
-      oid <- AuthCodeFlow[IO, JoseHeader, SimpleClaims](cfg, acf, tokenStore, logger)
+      oid <- AuthCodeFlow[IO, JoseHeader, SimpleClaims](cfg, acf, logger)
     yield oid
 
   /** Builds a middleware for authenticating requests based on a provided JWT token

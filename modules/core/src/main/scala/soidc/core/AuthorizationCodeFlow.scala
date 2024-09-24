@@ -22,6 +22,9 @@ trait AuthorizationCodeFlow[F[_], H, C] extends Realm[F, H, C]:
   /** Get a new access token using the given refresh token. */
   def runRefreshRequest(refreshToken: JWS): F[TokenResponse]
 
+  /** The token store used for `jwtRefresh`. */
+  def tokenStore: TokenStore[F, H, C]
+
 object AuthorizationCodeFlow:
   final case class Config(
       clientId: ClientId,
@@ -58,7 +61,7 @@ object AuthorizationCodeFlow:
   private class Impl[F[_], H, C](
       cfg: Config,
       client: HttpClient[F],
-      tokenStore: TokenStore[F, H, C],
+      val tokenStore: TokenStore[F, H, C],
       logger: Logger[F],
       flowState: Ref[F, FlowState]
   )(using
