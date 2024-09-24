@@ -29,8 +29,8 @@ object AuthorizationCodeFlow:
       redirectUri: Uri,
       providerUri: Uri,
       privateKey: JWK,
-      nonce: Option[Nonce],
-      scope: Option[ScopeList]
+      scope: Option[ScopeList] = None,
+      nonce: Option[Nonce] = None
   )
 
   enum Failure:

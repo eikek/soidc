@@ -14,11 +14,11 @@ import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.implicits.*
 import org.http4s.server.Router
-import scodec.bits.*
 import soidc.borer.given
-import soidc.core.*
 import soidc.core.model.*
+import soidc.core.{AuthorizationCodeFlow as ACF, *}
 import soidc.http4s.client.ByteEntityDecoder.given
+import soidc.http4s.client.Http4sClient
 import soidc.jwt.{Uri as _, *}
 
 object ExampleServer extends IOApp:
@@ -40,27 +40,30 @@ object ExampleServer extends IOApp:
         )
       )
     }
-
+  //// Fa9PRaVrgBZ4DmmwReU7bNEycNyxqGRu
   // OpenID Auth-Code-Flow with keycloak
   def authCodeFlow(
       client: Client[IO],
       tokenStore: TokenStore[IO, JoseHeader, SimpleClaims]
   ): IO[OpenIdFlow] =
-    AuthCodeFlow[IO, JoseHeader, SimpleClaims](
-      AuthCodeFlow.Config(
-        ClientId("example"),
-        uri"http://soidccnt:8180/realms/master", // keycloak realm
+    for
+      key <- JwkGenerate.symmetric[IO](16)
+      cfg = AuthCodeFlow.Config(
         uri"http://localhost:8888/login/keycloak", // where login route is mounted
-        ClientSecret(
-          "8CCr3yFDuMl3L0MgNSICXgELvuabi5si"
-        ).some, // Fa9PRaVrgBZ4DmmwReU7bNEycNyxqGRu
-        Some(Nonce(hex"caffee")),
+        "resume" // path segment to receive the openid redirect request
+      )
+      acfCfg = ACF.Config(
+        ClientId("example"),
+        ClientSecret("8CCr3yFDuMl3L0MgNSICXgELvuabi5si").some,
+        cfg.redirectUri.asJwtUri, // redirect to this uri
+        uri"http://soidccnt:8180/realms/master".asJwtUri, // keycloak realm
+        key, // for checking state parameter
         Some(ScopeList(Scope.Email, Scope.Profile))
-      ),
-      client,
-      tokenStore,
-      Logger.stderr[IO]
-    )
+      )
+      logger = Logger.stderr[IO]
+      acf <- ACF(acfCfg, Http4sClient(client), tokenStore, logger)
+      oid <- AuthCodeFlow[IO, JoseHeader, SimpleClaims](cfg, acf, tokenStore, logger)
+    yield oid
 
   /** Builds a middleware for authenticating requests based on a provided JWT token
     * (either via cookie or the Authorization header).

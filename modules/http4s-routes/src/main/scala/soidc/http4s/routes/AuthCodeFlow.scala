@@ -4,13 +4,11 @@ import cats.effect.*
 import cats.syntax.all.*
 
 import org.http4s.*
-import org.http4s.client.Client
 import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.Location
 import soidc.core.model.*
 import soidc.core.{AuthorizationCodeFlow as ACF, *}
-import soidc.http4s.client.Http4sClient
 import soidc.jwt.codec.ByteDecoder
 import soidc.jwt.{Uri as _, *}
 
@@ -24,14 +22,9 @@ trait AuthCodeFlow[F[_], H, C] extends Realm[F, H, C]:
   )(using cats.Functor[F]): F[Response[F]]
 
 object AuthCodeFlow:
-  final case class Config(
-      clientId: ClientId,
-      providerUri: Uri,
-      baseUri: Uri,
-      clientSecret: Option[ClientSecret],
-      nonce: Option[Nonce],
-      scope: Option[ScopeList]
-  )
+  final case class Config(baseUri: Uri, resumeSegment: String = "resume") {
+    lazy val redirectUri: Uri = baseUri / resumeSegment
+  }
 
   type Result[H, C] = Either[Result.Failure, Result.Success[H, C]]
 
@@ -57,7 +50,7 @@ object AuthCodeFlow:
 
   def apply[F[_]: Sync, H, C](
       cfg: Config,
-      client: Client[F],
+      acf: ACF[F, H, C],
       tokenStore: TokenStore[F, H, C],
       logger: Logger[F]
   )(using
@@ -65,28 +58,15 @@ object AuthCodeFlow:
       EntityDecoder[F, TokenResponse],
       StandardClaimsRead[C],
       StandardHeaderRead[H],
-      ByteDecoder[TokenResponse],
-      ByteDecoder[OpenIdConfig],
       ByteDecoder[JWKSet],
       ByteDecoder[H],
       ByteDecoder[C]
   ): F[AuthCodeFlow[F, H, C]] =
-    for
-      key <- JwkGenerate.symmetric()
-      acfCfg = ACF.Config(
-        cfg.clientId,
-        cfg.clientSecret,
-        jwtUri(cfg.baseUri / "resume"),
-        jwtUri(cfg.providerUri),
-        key,
-        cfg.nonce,
-        cfg.scope
-      )
-      acf <- ACF[F, H, C](acfCfg, Http4sClient[F](client), tokenStore, logger)
+    for key <- JwkGenerate.symmetric()
     yield new Impl(cfg, tokenStore, logger, acf)
 
-  private def jwtUri(uri: Uri): soidc.jwt.Uri =
-    soidc.jwt.Uri.unsafeFromString(uri.renderString)
+  // private def jwtUri(uri: Uri): soidc.jwt.Uri =
+  //   soidc.jwt.Uri.unsafeFromString(uri.renderString)
 
   private class Impl[F[_]: Sync, H, C](
       cfg: Config,
@@ -116,7 +96,7 @@ object AuthCodeFlow:
           resp <- TemporaryRedirect(Location(authUri))
         yield resp
 
-      case req @ GET -> Root / "resume" :? Params.StateParam(authState) =>
+      case req @ GET -> Root / cfg.resumeSegment :? Params.StateParam(authState) =>
         flow.obtainToken(req.params).flatMap {
           case Left(err) => cont(Result.failure(err))
           case Right(resp) =>

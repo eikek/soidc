@@ -19,4 +19,8 @@ package object routes {
 
   type JwtMaybeAuthRoutesMiddleware[F[_], H, C] =
     JwtMaybeAuthRoutes[F, H, C] => JwtMaybeAuthRoutes[F, H, C]
+
+  extension (self: Uri)
+    def asJwtUri: soidc.jwt.Uri =
+      soidc.jwt.Uri.unsafeFromString(self.renderString)
 }
