@@ -1,7 +1,7 @@
 package soidc.core
 
 import cats.Applicative
-import cats.Monad
+import cats.{Monad, Monoid}
 
 trait Realm[F[_], H, C]:
   /** Return a validator that can verify tokens from this provider. */
@@ -28,3 +28,6 @@ object Realm:
       val validator: JwtValidator[F, H, C] = a.validator.orElse(b.validator)
       val jwtRefresh: JwtRefresh[F, H, C] = a.jwtRefresh.andThen(b.jwtRefresh)
     }
+
+  given [F[_]: Monad, H, C]: Monoid[Realm[F, H, C]] =
+    Monoid.instance(empty[F, H, C], combine[F, H, C])
