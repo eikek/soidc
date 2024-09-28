@@ -41,14 +41,13 @@ object JwtAuth:
   )(using
       ByteDecoder[H],
       ByteDecoder[C]
-  ): JwtAuth[F, MaybeAuthenticated[H, C]] =
+  ): JwtAuth[F, JwtContext[H, C]] =
     Kleisli { req =>
       getToken(req) match
-        case None => OptionT.some[F](MaybeAuthenticated(None))
+        case None => OptionT.some[F](JwtContext.notAuthenticated)
         case Some(token) =>
           OptionT(validateToken[F, H, C](validator, token, onInvalidToken))
             .map(Authenticated.apply)
-            .map(_.toMaybeAuthenticated)
     }
 
   private def validateToken[F[_]: Monad, H, C](
@@ -71,7 +70,7 @@ object JwtAuth:
     lazy val secured: JwtAuth[F, Authenticated[H, C]] =
       JwtAuth.secured(getToken, validator, onInvalidToken)
 
-    lazy val optional: JwtAuth[F, MaybeAuthenticated[H, C]] =
+    lazy val optional: JwtAuth[F, JwtContext[H, C]] =
       JwtAuth.optional(getToken, validator, onInvalidToken)
 
     def withOnInvalidToken(action: ValidateFailure => F[Unit]): Builder[F, H, C] =

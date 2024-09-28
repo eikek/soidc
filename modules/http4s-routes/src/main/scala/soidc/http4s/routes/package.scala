@@ -15,7 +15,7 @@ package object routes {
     JwtAuthRoutes[F, H, C] => JwtAuthRoutes[F, H, C]
 
   type JwtMaybeAuthRoutes[F[_], H, C] =
-    Kleisli[OptionT[F, *], AuthedRequest[F, MaybeAuthenticated[H, C]], Response[F]]
+    Kleisli[OptionT[F, *], AuthedRequest[F, JwtContext[H, C]], Response[F]]
 
   type JwtMaybeAuthRoutesMiddleware[F[_], H, C] =
     JwtMaybeAuthRoutes[F, H, C] => JwtMaybeAuthRoutes[F, H, C]

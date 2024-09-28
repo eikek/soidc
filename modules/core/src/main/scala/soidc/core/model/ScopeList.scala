@@ -22,6 +22,17 @@ object ScopeList:
   def apply(scope: Scope*): ScopeList =
     ScopeList(SortedSet.from(scope.toSet))
 
+  /** Create a scope list from a comma-separated string. */
+  def fromString(str: String): ScopeList =
+    apply(
+      str
+        .split(',')
+        .toSet
+        .filter(_.nonEmpty)
+        .map(Scope.fromString)
+        .toSeq*
+    )
+
   given FromJson[ScopeList] =
     FromJson[String].map(s => apply(s.split("\\s+").toList.map(Scope.fromString)*))
   given ToJson[ScopeList] =

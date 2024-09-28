@@ -57,7 +57,7 @@ object TokenRefreshMiddleware:
   )(routes: JwtMaybeAuthRoutes[F, H, C]): JwtMaybeAuthRoutes[F, H, C] =
     Kleisli { req =>
       routes(req).semiflatMap { resp =>
-        req.context.token match
+        req.context.getToken match
           case Some(token) => handleToken[F, H, C](cfg, token, resp)
           case None        => resp.pure[F]
       }

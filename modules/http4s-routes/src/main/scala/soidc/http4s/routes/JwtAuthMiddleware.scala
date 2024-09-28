@@ -45,8 +45,8 @@ object JwtAuthMiddleware:
     )
 
   def optional[F[_]: Monad, H, C](
-      auth: JwtAuth[F, MaybeAuthenticated[H, C]]
-  ): AuthMiddleware[F, MaybeAuthenticated[H, C]] =
+      auth: JwtAuth[F, JwtContext[H, C]]
+  ): AuthMiddleware[F, JwtContext[H, C]] =
     AuthMiddleware(auth)
 
   final case class Builder[F[_], H, C](
@@ -66,7 +66,7 @@ object JwtAuthMiddleware:
     def securedOrRedirect(uri: Uri): AuthMiddleware[F, Authenticated[H, C]] =
       applyMiddlewares1(JwtAuthMiddleware.securedOrRedirect(authBuilder.secured, uri))
 
-    lazy val optional: AuthMiddleware[F, MaybeAuthenticated[H, C]] =
+    lazy val optional: AuthMiddleware[F, JwtContext[H, C]] =
       applyMiddlewares2(JwtAuthMiddleware.optional(authBuilder.optional))
 
     def withOnInvalidToken(action: ValidateFailure => F[Unit]): Builder[F, H, C] =
@@ -121,11 +121,11 @@ object JwtAuthMiddleware:
       service => r(mw.apply(service))
 
     private def applyMiddlewares2(
-        r: AuthMiddleware[F, MaybeAuthenticated[H, C]]
-    ): AuthMiddleware[F, MaybeAuthenticated[H, C]] =
+        r: AuthMiddleware[F, JwtContext[H, C]]
+    ): AuthMiddleware[F, JwtContext[H, C]] =
       val mw: JwtMaybeAuthRoutesMiddleware[F, H, C] = middlewares2.foldLeft(
         identity[
-          Kleisli[OptionT[F, *], AuthedRequest[F, MaybeAuthenticated[H, C]], Response[F]]
+          Kleisli[OptionT[F, *], AuthedRequest[F, JwtContext[H, C]], Response[F]]
         ]
       )((res, el) => res.andThen(el))
       service => r(mw.apply(service))

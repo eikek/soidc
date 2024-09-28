@@ -26,7 +26,7 @@ object ExampleServer extends IOApp:
   type LocalUserFlow = LocalFlow[IO, JoseHeader, SimpleClaims]
   type OpenIdFlow = AuthCodeFlow[IO, JoseHeader, SimpleClaims]
   type Authenticated = JwtContext.Authenticated[JoseHeader, SimpleClaims]
-  type MaybeAuthenticated = JwtContext.MaybeAuthenticated[JoseHeader, SimpleClaims]
+  type MaybeAuthenticated = JwtContext[JoseHeader, SimpleClaims]
   type ExampleAppRealm = Realm[IO, JoseHeader, SimpleClaims]
 
   // local users
@@ -132,8 +132,8 @@ object ExampleServer extends IOApp:
   }
 
   def maybeMember = AuthedRoutes.of[MaybeAuthenticated, IO] {
-    case ContextRequest(token, req @ GET -> Root / "test") =>
-      token.claims match
+    case ContextRequest(ctx, req @ GET -> Root / "test") =>
+      ctx.getToken.map(_.claims) match
         case Some(c) =>
           Ok(
             s"hello ${c.subject}!! You have time until ${c.expirationTime.map(_.asInstant)}"
