@@ -34,7 +34,8 @@ object TokenRefreshMiddleware:
 
     def updateCookie(cookieName: String, cookieUri: Uri): Config[F, H, C] =
       appendResponseUpdate((resp, token) =>
-        resp.addCookie(JwtCookie.create(cookieName, token.jws, cookieUri))
+        if (resp.cookies.exists(_.name == cookieName)) resp
+        else resp.addCookie(JwtCookie.create(cookieName, token.jws, cookieUri))
       )
 
     def updateHeader(name: String): Config[F, H, C] =
@@ -43,7 +44,7 @@ object TokenRefreshMiddleware:
 
   def forAuthenticated[F[_]: Monad: Clock, H, C](using
       StandardClaimsRead[C]
-  )(cfg: Config[F, H, C])(routes: JwtAuthRoutes[F, H, C]): JwtAuthRoutes[F, H, C] =
+  )(cfg: Config[F, H, C])(routes: JwtAuthedRoutes[F, H, C]): JwtAuthedRoutes[F, H, C] =
     Kleisli { req =>
       routes(req).semiflatMap { resp =>
         handleToken(cfg, req.context.token, resp)
@@ -54,7 +55,7 @@ object TokenRefreshMiddleware:
       StandardClaimsRead[C]
   )(
       cfg: Config[F, H, C]
-  )(routes: JwtMaybeAuthRoutes[F, H, C]): JwtMaybeAuthRoutes[F, H, C] =
+  )(routes: JwtMaybeAuthedRoutes[F, H, C]): JwtMaybeAuthedRoutes[F, H, C] =
     Kleisli { req =>
       routes(req).semiflatMap { resp =>
         req.context.getToken match

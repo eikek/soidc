@@ -3,11 +3,10 @@ package soidc.http4s.routes
 import soidc.jwt.JWSDecoded
 
 sealed trait JwtContext[H, C]:
-  def toAuthenticated: Option[JwtContext.Authenticated[H,C]]
+  def toAuthenticated: Option[JwtContext.Authenticated[H, C]]
   def isAuthenticated: Boolean = toAuthenticated.isDefined
   def getToken: Option[JWSDecoded[H, C]] = toAuthenticated.map(_.token)
   def widen: JwtContext[H, C] = this
-
 
 object JwtContext:
   def notAuthenticated[H, C]: JwtContext[H, C] =

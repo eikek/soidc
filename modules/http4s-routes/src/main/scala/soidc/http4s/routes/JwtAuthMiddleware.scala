@@ -51,8 +51,8 @@ object JwtAuthMiddleware:
 
   final case class Builder[F[_], H, C](
       authBuilder: JwtAuth.Builder[F, H, C],
-      middlewares1: List[JwtAuthenticatedRoutesMiddleware[F, H, C]] = Nil,
-      middlewares2: List[JwtMaybeAuthRoutesMiddleware[F, H, C]] = Nil
+      middlewares1: List[JwtAuthedRoutesMiddleware[F, H, C]] = Nil,
+      middlewares2: List[JwtMaybeAuthedRoutesMiddleware[F, H, C]] = Nil
   )(using ByteDecoder[H], ByteDecoder[C], Monad[F]) {
     lazy val secured: AuthMiddleware[F, Authenticated[H, C]] =
       val route = JwtAuthMiddleware.secured(authBuilder.secured)
@@ -101,19 +101,19 @@ object JwtAuthMiddleware:
       copy(authBuilder = authBuilder.modifyValidator(f))
 
     def withAuthMiddleware(
-        mw: JwtAuthenticatedRoutesMiddleware[F, H, C]
+        mw: JwtAuthedRoutesMiddleware[F, H, C]
     ): Builder[F, H, C] =
       copy(middlewares1 = middlewares1 :+ mw)
 
     def withMaybeAuthMiddleware(
-        mw: JwtMaybeAuthRoutesMiddleware[F, H, C]
+        mw: JwtMaybeAuthedRoutesMiddleware[F, H, C]
     ): Builder[F, H, C] =
       copy(middlewares2 = middlewares2 :+ mw)
 
     private def applyMiddlewares1(
         r: AuthMiddleware[F, Authenticated[H, C]]
     ): AuthMiddleware[F, Authenticated[H, C]] =
-      val mw: JwtAuthenticatedRoutesMiddleware[F, H, C] = middlewares1.foldLeft(
+      val mw: JwtAuthedRoutesMiddleware[F, H, C] = middlewares1.foldLeft(
         identity[
           Kleisli[OptionT[F, *], AuthedRequest[F, Authenticated[H, C]], Response[F]]
         ]
@@ -123,7 +123,7 @@ object JwtAuthMiddleware:
     private def applyMiddlewares2(
         r: AuthMiddleware[F, JwtContext[H, C]]
     ): AuthMiddleware[F, JwtContext[H, C]] =
-      val mw: JwtMaybeAuthRoutesMiddleware[F, H, C] = middlewares2.foldLeft(
+      val mw: JwtMaybeAuthedRoutesMiddleware[F, H, C] = middlewares2.foldLeft(
         identity[
           Kleisli[OptionT[F, *], AuthedRequest[F, JwtContext[H, C]], Response[F]]
         ]
