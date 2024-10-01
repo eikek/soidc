@@ -4,10 +4,12 @@ import cats.Applicative
 import cats.data.{Kleisli, OptionT}
 
 import org.http4s.*
+import soidc.core.JwtDecodingValidator.ValidateFailure
 import soidc.http4s.routes.JwtContext.*
 
 package object routes {
-  type JwtAuth[F[_], T] = Kleisli[OptionT[F, *], Request[F], T]
+  type JwtAuth[F[_], T] = Kleisli[F, Request[F], Either[ValidateFailure, T]]
+  type JwtAuthOpt[F[_], T] = Kleisli[OptionT[F, *], Request[F], T]
 
   type JwtAuthedRoutes[F[_], H, C] =
     Kleisli[OptionT[F, *], AuthedRequest[F, Authenticated[H, C]], Response[F]]

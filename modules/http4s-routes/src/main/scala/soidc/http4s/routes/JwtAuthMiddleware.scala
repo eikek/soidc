@@ -7,7 +7,6 @@ import cats.effect.*
 import cats.syntax.all.*
 
 import org.http4s.*
-import org.http4s.headers.Location
 import org.http4s.server.AuthMiddleware
 import soidc.core.JwtDecodingValidator.ValidateFailure
 import soidc.core.JwtRefresh
@@ -20,54 +19,56 @@ import soidc.jwt.codec.ByteDecoder
 /** Creates [[org.http4s.server.AuthMiddleware]]s */
 object JwtAuthMiddleware:
   def builder[F[_]: Monad, H, C](using ByteDecoder[H], ByteDecoder[C]): Builder[F, H, C] =
-    Builder(JwtAuth.builder[F, H, C])
+    Builder(
+      JwtAuth.builder[F, H, C],
+      AuthedRoutes.empty[ValidateFailure, F],
+      _ => Response(status = Status.Unauthorized).pure[F]
+    )
 
   def secured[F[_]: Monad, H, C](
-      auth: JwtAuth[F, Authenticated[H, C]]
-  ): AuthMiddleware[F, Authenticated[H, C]] =
-    AuthMiddleware(auth)
-
-  def securedOr[F[_]: Monad, H, C](
       auth: JwtAuth[F, Authenticated[H, C]],
+      onFailure: AuthedRoutes[ValidateFailure, F]
+  ): AuthMiddleware[F, Authenticated[H, C]] =
+    AuthMiddleware(auth, onFailure)
+
+  def securedOpt[F[_]: Monad, H, C](
+      auth: JwtAuthOpt[F, Authenticated[H, C]],
       onFailure: Request[F] => F[Response[F]]
   ): AuthMiddleware[F, Authenticated[H, C]] =
     AuthMiddleware.noSpider(auth, onFailure)
 
-  def securedOrRedirect[F[_]: Monad, H, C](
-      auth: JwtAuth[F, Authenticated[H, C]],
-      uri: Uri
-  ): AuthMiddleware[F, Authenticated[H, C]] =
-    AuthMiddleware.noSpider(
-      auth,
-      _ =>
-        Response(status = Status.TemporaryRedirect, headers = Headers(Location(uri)))
-          .pure[F]
-    )
-
-  def optional[F[_]: Monad, H, C](
-      auth: JwtAuth[F, JwtContext[H, C]]
+  def securedOrAnonymous[F[_]: Monad, H, C](
+      auth: JwtAuthOpt[F, JwtContext[H, C]],
+      onFailure: Request[F] => F[Response[F]]
   ): AuthMiddleware[F, JwtContext[H, C]] =
-    AuthMiddleware(auth)
+    AuthMiddleware.noSpider(auth, onFailure)
 
   final case class Builder[F[_], H, C](
       authBuilder: JwtAuth.Builder[F, H, C],
+      onFailure: AuthedRoutes[ValidateFailure, F],
+      onFailureOpt: Request[F] => F[Response[F]],
       middlewares1: List[JwtAuthedRoutesMiddleware[F, H, C]] = Nil,
       middlewares2: List[JwtMaybeAuthedRoutesMiddleware[F, H, C]] = Nil
   )(using ByteDecoder[H], ByteDecoder[C], Monad[F]) {
     lazy val secured: AuthMiddleware[F, Authenticated[H, C]] =
-      val route = JwtAuthMiddleware.secured(authBuilder.secured)
+      val route = JwtAuthMiddleware.secured(authBuilder.secured, onFailure)
       applyMiddlewares1(route)
 
-    def securedOr(
-        onFailure: Request[F] => F[Response[F]]
-    ): AuthMiddleware[F, Authenticated[H, C]] =
-      applyMiddlewares1(JwtAuthMiddleware.securedOr(authBuilder.secured, onFailure))
+    lazy val securedOpt: AuthMiddleware[F, Authenticated[H, C]] =
+      applyMiddlewares1(
+        JwtAuthMiddleware.securedOpt(authBuilder.securedOpt, onFailureOpt)
+      )
 
-    def securedOrRedirect(uri: Uri): AuthMiddleware[F, Authenticated[H, C]] =
-      applyMiddlewares1(JwtAuthMiddleware.securedOrRedirect(authBuilder.secured, uri))
+    lazy val securedOrAnonymous: AuthMiddleware[F, JwtContext[H, C]] =
+      applyMiddlewares2(
+        JwtAuthMiddleware.securedOrAnonymous(authBuilder.securedOrAnonymous, onFailureOpt)
+      )
 
-    lazy val optional: AuthMiddleware[F, JwtContext[H, C]] =
-      applyMiddlewares2(JwtAuthMiddleware.optional(authBuilder.optional))
+    def withOnFailure(r: AuthedRoutes[ValidateFailure, F]): Builder[F, H, C] =
+      copy(onFailure = r)
+
+    def withOnFailure(r: Request[F] => F[Response[F]]): Builder[F, H, C] =
+      copy(onFailureOpt = r, onFailure = Kleisli(req => OptionT.liftF(r(req.req))))
 
     def withOnInvalidToken(action: ValidateFailure => F[Unit]): Builder[F, H, C] =
       copy(authBuilder = authBuilder.withOnInvalidToken(action))

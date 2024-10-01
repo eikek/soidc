@@ -22,6 +22,10 @@ object JwtDecodingValidator:
     case Success(jwt: JWSDecoded[H, C])
     case Failure(cause: ValidateFailure)
 
+    def toEither: Either[ValidateFailure, JWSDecoded[H, C]] = this match
+      case Success(a) => Right(a)
+      case Failure(b) => Left(b)
+
   def from[F[_]: Applicative, H, C](
       validator: JwtValidator[F, H, C]
   ): JwtDecodingValidator[F, H, C] =

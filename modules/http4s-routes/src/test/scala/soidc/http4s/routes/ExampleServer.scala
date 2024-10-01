@@ -145,8 +145,8 @@ object ExampleServer extends IOApp:
     val auth = withAuth(local.or(openId))
     Router(
       "login" -> loginRoute(openId, local),
-      "member" -> auth.secured(memberRoutes),
-      "open" -> auth.optional(maybeMember)
+      "member" -> auth.securedOpt(memberRoutes),
+      "open" -> auth.securedOrAnonymous(maybeMember)
     )
 
   def run(args: List[String]): IO[ExitCode] =
