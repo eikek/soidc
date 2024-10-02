@@ -280,6 +280,7 @@ Just a list of related RFCs for reference:
 - OpenID
   - https://openid.net/specs/openid-connect-core-1_0.html
   - https://openid.net/specs/openid-connect-basic-1_0.html
+  - https://openid.net/specs/openid-connect-rpinitiated-1_0.html
 - JWS https://datatracker.ietf.org/doc/html/rfc7515
 - JWK https://datatracker.ietf.org/doc/html/rfc7517
 - JWA https://datatracker.ietf.org/doc/html/rfc7518

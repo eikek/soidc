@@ -40,7 +40,7 @@ object ExampleServer extends IOApp:
         )
       )
     }
-  //// Fa9PRaVrgBZ4DmmwReU7bNEycNyxqGRu
+
   // OpenID Auth-Code-Flow with keycloak
   def authCodeFlow(
       client: Client[IO],
@@ -48,21 +48,16 @@ object ExampleServer extends IOApp:
   ): IO[OpenIdFlow] =
     for
       key <- JwkGenerate.symmetric[IO](16)
-      cfg = AuthCodeFlow.Config(
-        uri"http://localhost:8888/login/keycloak", // where login route is mounted
-        "resume" // path segment to receive the openid redirect request
-      )
       acfCfg = ACF.Config(
         ClientId("example"),
         ClientSecret("8CCr3yFDuMl3L0MgNSICXgELvuabi5si").some,
-        cfg.redirectUri.asJwtUri, // redirect to this uri
         uri"http://soidccnt:8180/realms/master".asJwtUri, // keycloak realm
         key, // for checking state parameter
         Some(ScopeList(Scope.Email, Scope.Profile))
       )
       logger = Logger.stderr[IO]
       acf <- ACF(acfCfg, Http4sClient(client), tokenStore, logger)
-      oid <- AuthCodeFlow[IO, JoseHeader, SimpleClaims](cfg, acf, logger)
+      oid <- AuthCodeFlow[IO, JoseHeader, SimpleClaims](acf, logger)
     yield oid
 
   /** Builds a middleware for authenticating requests based on a provided JWT token
@@ -90,7 +85,9 @@ object ExampleServer extends IOApp:
   def loginRoute(codeFlow: OpenIdFlow, localFlow: LocalUserFlow): HttpRoutes[IO] =
     HttpRoutes.of {
       case req @ GET -> "keycloak" /: _ =>
-        codeFlow.run(req) {
+        val mountUri =
+          uri"http://localhost:8888/login/keycloak" // where login route is mounted
+        codeFlow.run(req, mountUri) {
           case Left(err) => UnprocessableEntity(err.toString())
           case Right(AuthCodeFlow.Result.Success(at, tokenResp)) =>
             for

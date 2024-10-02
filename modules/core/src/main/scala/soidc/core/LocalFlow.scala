@@ -59,6 +59,9 @@ object LocalFlow:
         .extend[F, H, C](cfg.secretKey)(cfg.sessionValidTime)
         .forIssuer(_ == cfg.issuer.value)
 
+    def isIssuer(jws: JWSDecoded[H, C])(using StandardClaims[C]): Boolean =
+      StandardClaims[C].issuer(jws.claims).exists(_.value == cfg.issuer.value)
+
     def createToken(header: H, claims: C): F[JWSDecoded[H, C]] =
       JwtCreate.default[F, H, C](
         cfg.secretKey,

@@ -308,7 +308,7 @@ val validator = JwtValidator
   .openId[IO, JoseHeader, SimpleClaims](cfg, client)
   .map(_.forIssuer(_.startsWith("http://issuer"))) // restrict this to the a known issuer
   .unsafeRunSync()
-// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.JwtValidator$$anon$1@49fa0d10
+// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.JwtValidator$$anon$1@113dd051
 
 validator.validate(jws).unsafeRunSync() == Some(Validate.Result.success)
 // res9: Boolean = true
@@ -420,7 +420,7 @@ val res1 = httpApp.run(badReq).unsafeRunSync()
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Content-Type: text/plain; charset=UTF-8, Content-Length: 9),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@2b324335
+//    = org.typelevel.vault.Vault@b9f1f88
 // )
 val res2 = httpApp.run(goodReq).unsafeRunSync()
 // res2: Response[[A >: Nothing <: Any] =>> IO[A]] = (
@@ -428,7 +428,7 @@ val res2 = httpApp.run(goodReq).unsafeRunSync()
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Content-Type: text/plain; charset=UTF-8, Content-Length: 2),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@741a14e4
+//    = org.typelevel.vault.Vault@328dce25
 // )
 ```
 
@@ -444,6 +444,7 @@ Just a list of related RFCs for reference:
 - OpenID
   - https://openid.net/specs/openid-connect-core-1_0.html
   - https://openid.net/specs/openid-connect-basic-1_0.html
+  - https://openid.net/specs/openid-connect-rpinitiated-1_0.html
 - JWS https://datatracker.ietf.org/doc/html/rfc7515
 - JWK https://datatracker.ietf.org/doc/html/rfc7517
 - JWA https://datatracker.ietf.org/doc/html/rfc7518

@@ -1,5 +1,6 @@
 package soidc.core
 
+import cats.data.OptionT
 import cats.effect.*
 import cats.syntax.all.*
 
@@ -12,10 +13,16 @@ import soidc.jwt.codec.ByteDecoder
 trait AuthorizationCodeFlow[F[_], H, C] extends Realm[F, H, C]:
   /** Creates the authorization uri for redirecting the user agent to the auth provider.
     */
-  def authorizeUrl: F[Uri]
+  def authorizeUrl(redirectUri: Uri): F[Uri]
+
+  /** Creates the logout uri for redirecting the user-agent to logout the user. This might
+    * not be supported by the OP.
+    */
+  def logoutUrl(req: LogoutRequest): F[Option[Uri]]
 
   /** Get the access token with the query parameters from the redirect request. */
   def obtainToken(
+      redirectUri: Uri,
       reqParams: Map[String, String]
   ): F[Either[Failure, TokenResponse.Success]]
 
@@ -29,7 +36,7 @@ object AuthorizationCodeFlow:
   final case class Config(
       clientId: ClientId,
       clientSecret: Option[ClientSecret],
-      redirectUri: Uri,
+//      redirectUri: Uri,
       providerUri: Uri,
       privateKey: JWK,
       scope: Option[ScopeList] = None,
@@ -74,12 +81,12 @@ object AuthorizationCodeFlow:
       ByteDecoder[C],
       Sync[F]
   ) extends AuthorizationCodeFlow[F, H, C] {
-    def authorizeUrl: F[Uri] =
+    def authorizeUrl(redirectUri: Uri): F[Uri] =
       for
         randomState <- State.randomSigned[F](cfg.privateKey)
         baseReq = AuthorizationRequest(
           cfg.clientId,
-          cfg.redirectUri,
+          redirectUri,
           ResponseType.Code,
           cfg.scope.getOrElse(ScopeList()),
           randomState.some,
@@ -93,7 +100,22 @@ object AuthorizationCodeFlow:
         }
       yield authUri
 
+    def logoutUrl(req: LogoutRequest): F[Option[Uri]] =
+      (for
+        endpoint <- OptionT(openIdConfig.map(_.endSessionEndpoint))
+        randomState <- OptionT.liftF(State.randomSigned[F](cfg.privateKey))
+        rreq = req.state
+          .map(_ => req)
+          .getOrElse(req.withState(randomState))
+          .withClientId(cfg.clientId)
+        result = endpoint.appendQuery(rreq.asMap)
+      yield result).value
+
+    def isIssuer(jws: JWSDecoded[H, C])(using StandardClaims[C]): Boolean =
+      StandardClaims[C].issuer(jws.claims).exists(_.value == cfg.providerUri.value)
+
     def obtainToken(
+        redirectUri: Uri,
         reqParams: Map[String, String]
     ): F[Either[Failure, TokenResponse.Success]] =
       val authState = reqParams.get("state").map(State.fromString)
@@ -107,7 +129,7 @@ object AuthorizationCodeFlow:
           case ACR.Result.Success(code) =>
             val req = TokenRequest.code(
               code,
-              cfg.redirectUri,
+              redirectUri,
               cfg.clientId,
               cfg.clientSecret
             )

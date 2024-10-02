@@ -70,6 +70,9 @@ object JwtAuthMiddleware:
     def withOnFailure(r: Request[F] => F[Response[F]]): Builder[F, H, C] =
       copy(onFailureOpt = r, onFailure = Kleisli(req => OptionT.liftF(r(req.req))))
 
+    def withOnFailure(resp: Response[F]): Builder[F, H, C] =
+      withOnFailure(_ => resp.pure[F])
+
     def withOnInvalidToken(action: ValidateFailure => F[Unit]): Builder[F, H, C] =
       copy(authBuilder = authBuilder.withOnInvalidToken(action))
 

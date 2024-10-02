@@ -13,18 +13,15 @@ import soidc.jwt.codec.ByteDecoder
 import soidc.jwt.{Uri as _, *}
 
 trait AuthCodeFlow[F[_], H, C] extends Realm[F, H, C]:
-  def routes(
+  def routes(mountUri: Uri)(
       cont: AuthCodeFlow.Result[H, C] => F[Response[F]]
   ): HttpRoutes[F]
 
-  def run(req: Request[F])(
+  def run(req: Request[F], mountUri: Uri)(
       cont: AuthCodeFlow.Result[H, C] => F[Response[F]]
   )(using cats.Functor[F]): F[Response[F]]
 
 object AuthCodeFlow:
-  final case class Config(baseUri: Uri, resumeSegment: String = "resume") {
-    lazy val redirectUri: Uri = baseUri / resumeSegment
-  }
 
   type Result[H, C] = Either[Result.Failure, Result.Success[H, C]]
 
@@ -49,7 +46,6 @@ object AuthCodeFlow:
   }
 
   def apply[F[_]: Sync, H, C](
-      cfg: Config,
       acf: ACF[F, H, C],
       logger: Logger[F]
   )(using
@@ -62,13 +58,9 @@ object AuthCodeFlow:
       ByteDecoder[C]
   ): F[AuthCodeFlow[F, H, C]] =
     for key <- JwkGenerate.symmetric()
-    yield new Impl(cfg, logger, acf)
-
-  // private def jwtUri(uri: Uri): soidc.jwt.Uri =
-  //   soidc.jwt.Uri.unsafeFromString(uri.renderString)
+    yield new Impl(logger, acf)
 
   private class Impl[F[_]: Sync, H, C](
-      cfg: Config,
       logger: Logger[F],
       flow: ACF[F, H, C]
   )(using
@@ -85,38 +77,43 @@ object AuthCodeFlow:
 
     def validator: JwtValidator[F, H, C] = flow.validator
     def jwtRefresh: JwtRefresh[F, H, C] = flow.jwtRefresh
+    def isIssuer(jws: JWSDecoded[H, C])(using StandardClaims[C]): Boolean =
+      flow.isIssuer(jws)
 
-    def routes(cont: Result[H, C] => F[Response[F]]): HttpRoutes[F] = HttpRoutes.of {
-      case GET -> Root =>
-        for
-          authUri <- flow.authorizeUrl.map(_.asUri)
-          _ <- logger.debug(show"Redirect to provider: $authUri")
-          resp <- TemporaryRedirect(Location(authUri))
-        yield resp
+    def routes(mountUri: Uri)(cont: Result[H, C] => F[Response[F]]): HttpRoutes[F] =
+      val redirectUri = (mountUri / "resume").asJwtUri
+      HttpRoutes.of {
+        case GET -> Root =>
+          for
+            authUri <- flow.authorizeUrl(redirectUri).map(_.asUri)
+            _ <- logger.debug(show"Redirect to provider: $authUri")
+            resp <- TemporaryRedirect(Location(authUri))
+          yield resp
 
-      case req @ GET -> Root / cfg.resumeSegment :? Params.StateParam(authState) =>
-        flow.obtainToken(req.params).flatMap {
-          case Left(err) => cont(Result.failure(err))
-          case Right(resp) =>
-            resp.accessToken.decode[H, C] match
-              case Left(err) => cont(Result.failure(err))
-              case Right(jws) =>
-                flow.tokenStore.setRefreshTokenIfPresent(jws, resp.refreshToken) >> cont(
-                  Result.success(jws, resp)
-                )
-        }
-    }
+        case req @ GET -> Root / "resume" :? Params.StateParam(authState) =>
+          flow.obtainToken(redirectUri, req.params).flatMap {
+            case Left(err) => cont(Result.failure(err))
+            case Right(resp) =>
+              resp.accessToken.decode[H, C] match
+                case Left(err) => cont(Result.failure(err))
+                case Right(jws) =>
+                  flow.tokenStore
+                    .setRefreshTokenIfPresent(jws, resp.refreshToken) >> cont(
+                    Result.success(jws, resp)
+                  )
+          }
+      }
 
-    def run(req: Request[F])(cont: Result[H, C] => F[Response[F]])(using
+    def run(req: Request[F], mountUri: Uri)(cont: Result[H, C] => F[Response[F]])(using
         cats.Functor[F]
     ): F[Response[F]] =
       val path = Uri.Path(
-        req.uri.path.segments.drop(cfg.baseUri.path.segments.size),
+        req.uri.path.segments.drop(mountUri.path.segments.size),
         req.uri.path.absolute,
         req.uri.path.endsWithSlash
       )
       val nr = req.withUri(req.uri.withPath(path))
-      routes(cont).orNotFound.run(nr)
+      routes(mountUri)(cont).orNotFound.run(nr)
 
     extension (self: soidc.jwt.Uri) def asUri: Uri = Uri.unsafeFromString(self.value)
   }
