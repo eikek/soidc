@@ -21,8 +21,7 @@ object JwtAuthMiddleware:
   def builder[F[_]: Monad, H, C](using ByteDecoder[H], ByteDecoder[C]): Builder[F, H, C] =
     Builder(
       JwtAuth.builder[F, H, C],
-      AuthedRoutes.empty[ValidateFailure, F],
-      _ => Response(status = Status.Unauthorized).pure[F]
+      AuthedRoutes(_ => OptionT.some(Response(status = Status.Unauthorized)))
     )
 
   def secured[F[_]: Monad, H, C](
@@ -31,50 +30,34 @@ object JwtAuthMiddleware:
   ): AuthMiddleware[F, Authenticated[H, C]] =
     AuthMiddleware(auth, onFailure)
 
-  def securedOpt[F[_]: Monad, H, C](
-      auth: JwtAuthOpt[F, Authenticated[H, C]],
-      onFailure: Request[F] => F[Response[F]]
-  ): AuthMiddleware[F, Authenticated[H, C]] =
-    AuthMiddleware.noSpider(auth, onFailure)
-
   def securedOrAnonymous[F[_]: Monad, H, C](
-      auth: JwtAuthOpt[F, JwtContext[H, C]],
-      onFailure: Request[F] => F[Response[F]]
+      auth: JwtAuth[F, JwtContext[H, C]],
+      onFailure: AuthedRoutes[ValidateFailure, F]
   ): AuthMiddleware[F, JwtContext[H, C]] =
-    AuthMiddleware.noSpider(auth, onFailure)
+    AuthMiddleware(auth, onFailure)
 
   final case class Builder[F[_], H, C](
       authBuilder: JwtAuth.Builder[F, H, C],
       onFailure: AuthedRoutes[ValidateFailure, F],
-      onFailureOpt: Request[F] => F[Response[F]],
       middlewares1: List[JwtAuthedRoutesMiddleware[F, H, C]] = Nil,
       middlewares2: List[JwtMaybeAuthedRoutesMiddleware[F, H, C]] = Nil
   )(using ByteDecoder[H], ByteDecoder[C], Monad[F]) {
     lazy val secured: AuthMiddleware[F, Authenticated[H, C]] =
-      val route = JwtAuthMiddleware.secured(authBuilder.secured, onFailure)
-      applyMiddlewares1(route)
-
-    lazy val securedOpt: AuthMiddleware[F, Authenticated[H, C]] =
-      applyMiddlewares1(
-        JwtAuthMiddleware.securedOpt(authBuilder.securedOpt, onFailureOpt)
-      )
+      applyMiddlewares1(JwtAuthMiddleware.secured(authBuilder.secured, onFailure))
 
     lazy val securedOrAnonymous: AuthMiddleware[F, JwtContext[H, C]] =
       applyMiddlewares2(
-        JwtAuthMiddleware.securedOrAnonymous(authBuilder.securedOrAnonymous, onFailureOpt)
+        JwtAuthMiddleware.securedOrAnonymous(authBuilder.securedOrAnonymous, onFailure)
       )
 
     def withOnFailure(r: AuthedRoutes[ValidateFailure, F]): Builder[F, H, C] =
       copy(onFailure = r)
 
     def withOnFailure(r: Request[F] => F[Response[F]]): Builder[F, H, C] =
-      copy(onFailureOpt = r, onFailure = Kleisli(req => OptionT.liftF(r(req.req))))
+      copy(onFailure = Kleisli(req => OptionT.liftF(r(req.req))))
 
     def withOnFailure(resp: Response[F]): Builder[F, H, C] =
       withOnFailure(_ => resp.pure[F])
-
-    def withOnInvalidToken(action: ValidateFailure => F[Unit]): Builder[F, H, C] =
-      copy(authBuilder = authBuilder.withOnInvalidToken(action))
 
     def withGeToken(f: GetToken[F]): Builder[F, H, C] =
       copy(authBuilder = authBuilder.withGetToken(f))

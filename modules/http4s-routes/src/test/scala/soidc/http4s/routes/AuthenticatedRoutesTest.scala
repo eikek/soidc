@@ -31,7 +31,6 @@ class AuthenticatedRoutesTest extends CatsEffectSuite:
     val withAuth = authBuilder
       .withValidator(validator)
       .withBearerToken
-      .withOnInvalidToken(IO.println)
       .secured
 
     val app = withAuth(testRoutes).orNotFound
@@ -50,7 +49,10 @@ class AuthenticatedRoutesTest extends CatsEffectSuite:
     val withAuth = authBuilder
       .withValidator(validator)
       .withBearerToken
-      .withOnInvalidToken(e => error.set(Some(e)))
+      .withOnFailure(AuthedRoutes.of[ValidateFailure, IO] {
+        case ContextRequest(context, req) =>
+          error.set(Some(context)).as(Response(status = Status.Unauthorized))
+      })
       .secured
 
     val app = withAuth(testRoutes).orNotFound
@@ -72,7 +74,10 @@ class AuthenticatedRoutesTest extends CatsEffectSuite:
     val withAuth = authBuilder
       .withValidator(validator)
       .withBearerToken
-      .withOnInvalidToken(e => error.set(Some(e)))
+      .withOnFailure(AuthedRoutes.of[ValidateFailure, IO] {
+        case ContextRequest(context, req) =>
+          error.set(Some(context)).as(Response(status = Status.Unauthorized))
+      })
       .secured
 
     val app = withAuth(testRoutes).orNotFound
@@ -82,27 +87,3 @@ class AuthenticatedRoutesTest extends CatsEffectSuite:
     val res = app.run(req).unsafeRunSync()
     assertEquals(res.status, Status.Unauthorized)
     error.get.assert(_.isDefined)
-
-  // test("refresh cookie"):
-  //   val jws =
-  //     JWS(Base64String.encodeString("{}"), Base64String.encodeString("""{"sub":"me"}"""))
-  //   val jwk = JWK.symmetric(Base64String.encodeString("hello"), Algorithm.HS256)
-  //   val cookieUpdate =
-  //     CookieUpdateMiddleware.default[IO]("auth-cookie", _ => uri"http://localhost", jwk)
-  //   val validator = JwtValidator.alwaysValid[IO, JoseHeader, SimpleClaims]
-  //   val withAuth = authBuilder
-  //     .withValidator(validator)
-  //     .withBearerToken
-  //     .withOnInvalidToken(IO.println)
-  //     .withAuthMiddleware(
-  //       cookieUpdate
-  //         .refresh[Authenticated[JoseHeader, SimpleClaims]](Clock[IO], 10.minutes)
-  //     )
-  //     .secured
-
-  //   val app = withAuth(testRoutes).orNotFound
-  //   val req = Request[IO](uri = uri"/test").withHeaders(
-  //     Authorization(Credentials.Token(AuthScheme.Bearer, jws.compact))
-  //   )
-  //   val res = app.run(req)
-  //   println(res.unsafeRunSync())

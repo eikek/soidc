@@ -1,7 +1,8 @@
 package soidc.http4s
 
-import cats.Applicative
 import cats.data.{Kleisli, OptionT}
+import cats.syntax.all.*
+import cats.{Applicative, Functor, Monad}
 
 import org.http4s.*
 import soidc.core.JwtDecodingValidator.ValidateFailure
@@ -22,6 +23,20 @@ package object routes {
 
   type JwtMaybeAuthedRoutesMiddleware[F[_], H, C] =
     JwtMaybeAuthedRoutes[F, H, C] => JwtMaybeAuthedRoutes[F, H, C]
+
+  extension [F[_], T](self: JwtAuth[F, T])
+    def asJwtAuthOpt(using Functor[F]): JwtAuthOpt[F, T] =
+      self.mapF(fea => OptionT(fea.map(_.toOption)))
+
+    def asJwtAuthOpt(
+        onError: ValidateFailure => F[Unit]
+    )(using Monad[F]): JwtAuthOpt[F, T] =
+      self.mapF(fea =>
+        OptionT(fea.flatMap {
+          case Left(err) => onError(err).as(None)
+          case Right(v)  => v.some.pure[F]
+        })
+      )
 
   extension (self: Uri)
     def asJwtUri: soidc.jwt.Uri =

@@ -66,7 +66,6 @@ object ExampleServer extends IOApp:
   def withAuth(realm: ExampleAppRealm) = JwtAuthMiddleware
     .builder[IO, JoseHeader, SimpleClaims]
     .withGeToken(GetToken.anyOf(GetToken.cookie("auth_cookie"), GetToken.bearer))
-    .withOnInvalidToken(IO.println)
     .withValidator(realm.validator)
     .withRefresh(
       realm.jwtRefresh,
@@ -142,7 +141,7 @@ object ExampleServer extends IOApp:
     val auth = withAuth(local.or(openId))
     Router(
       "login" -> loginRoute(openId, local),
-      "member" -> auth.securedOpt(memberRoutes),
+      "member" -> auth.secured(memberRoutes),
       "open" -> auth.securedOrAnonymous(maybeMember)
     )
 

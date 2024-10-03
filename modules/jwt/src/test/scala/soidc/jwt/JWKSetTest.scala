@@ -1,8 +1,8 @@
 package soidc.jwt
 
 import munit.FunSuite
-import soidc.jwt.codec.syntax.*
 import soidc.jwt.codec.JsonValue
+import soidc.jwt.codec.syntax.*
 
 class JWKSetTest extends FunSuite:
 
@@ -19,11 +19,12 @@ class JWKSetTest extends FunSuite:
 
   test("fromJson"):
     val jwks = JWKSet(Rfc7515.Appendix1.symmetricKey, Rfc7515.Appendix2.rsaKey)
-    val expect = JsonValue.obj(
-      "keys" -> JsonValue.arr(
-        Rfc7515.Appendix1.symmetricKey,
-        Rfc7515.Appendix2.rsaKey
+    val expect = JsonValue
+      .obj(
+        "keys" -> JsonValue.arr(
+          Rfc7515.Appendix1.symmetricKey,
+          Rfc7515.Appendix2.rsaKey
+        )
       )
-    ).unsafeAs[JWKSet]
+      .unsafeAs[JWKSet]
     assertEquals(jwks, expect)
-
