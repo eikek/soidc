@@ -65,25 +65,3 @@ class BorerCodecTest extends FunSuite:
   test("decode double"):
     val value = ByteVector.view("15.654".getBytes)
     assertEquals(value.unsafeAs[Double], 15.654)
-
-  // test("create jws"):
-  //   val claim = SimpleClaims.empty
-  //     .withIssuer(StringOrUri("mine"))
-  //     .withExpirationTime(NumericDate.instant(Instant.parse("2025-03-22T19:00:00Z")))
-  //     .withValue(ParameterName.of("email_verified"), true)
-  //   val header = JoseHeader.jwt.withAlgorithm(Algorithm.HS256)
-  //   val jwk = JWK(KeyType.OCT).withValue(
-  //     ParameterName.of("k"),
-  //     Base64String.unsafeOf(
-  //       "AyM1SysPpbyDfgZld3umj1qzKObwVMkoqQ-EstJQLr_T-1qS0gZH75aKtMN3Yj0iPS4hcgUuTwjAzZr1Z9CAow"
-  //     )
-  //   )
-  //   val jws1 = JWS.unsigned(header, claim)
-
-  //   val secret = jwk.getSymmetricHmacKey(Algorithm.HS256).fold(throw _, identity)
-  //   val mac = javax.crypto.Mac.getInstance(secret.getAlgorithm())
-  //   mac.init(secret)
-  //   mac.update(jws1.compact.getBytes())
-
-  //   val sig = ByteVector.view(mac.doFinal())
-  //   println(Base64String.encode(sig))

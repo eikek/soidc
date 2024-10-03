@@ -5,11 +5,11 @@ import soidc.jwt.Uri
 
 /** A request to the `end_session_endpoint` */
 final case class LogoutRequest(
-    idTokenHint: Option[JWS],
-    logoutHint: Option[String],
-    clientId: Option[ClientId],
-    postLogoutRedirectUri: Option[Uri],
-    state: Option[State]
+    idTokenHint: Option[JWS] = None,
+    logoutHint: Option[String] = None,
+    clientId: Option[ClientId] = None,
+    postLogoutRedirectUri: Option[Uri] = None,
+    state: Option[State] = None
 ):
 
   def withIdToken(idt: JWS): LogoutRequest =

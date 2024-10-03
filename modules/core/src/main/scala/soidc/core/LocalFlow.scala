@@ -9,7 +9,7 @@ import cats.effect.*
 import soidc.jwt.*
 import soidc.jwt.codec.ByteEncoder
 
-/** Combines functionality for supporting a local user database for convenience. */
+/** Combines functionality for supporting a local user database. */
 trait LocalFlow[F[_], H, C] extends Realm[F, H, C]:
   /** Return a validator that can verify tokens from this provider. */
   def validator: JwtValidator[F, H, C]
@@ -63,7 +63,7 @@ object LocalFlow:
       StandardClaims[C].issuer(jws.claims).exists(_.value == cfg.issuer.value)
 
     def createToken(header: H, claims: C): F[JWSDecoded[H, C]] =
-      JwtCreate.default[F, H, C](
+      JwsCreate.default[F, H, C](
         cfg.secretKey,
         cfg.sessionValidTime,
         header,

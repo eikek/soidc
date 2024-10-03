@@ -36,7 +36,6 @@ object AuthorizationCodeFlow:
   final case class Config(
       clientId: ClientId,
       clientSecret: Option[ClientSecret],
-//      redirectUri: Uri,
       providerUri: Uri,
       privateKey: JWK,
       scope: Option[ScopeList] = None,

@@ -9,10 +9,10 @@ import cats.syntax.all.*
 import soidc.jwt.*
 import soidc.jwt.codec.ByteEncoder
 
-/** Utility functions to create JWTs. It assumes signing errors to be fatal and rethrows
+/** Utility functions to create JWS. It assumes signing errors to be fatal and rethrows
   * them into the `F`.
   */
-object JwtCreate:
+object JwsCreate:
   /** Modify and sign a given JWS with the current time. */
   def modify[F[_]: Clock: MonadThrow, H, C](key: JWK, jws: JWSDecoded[H, C])(
       modifyHeader: (NumericDate, H) => H,

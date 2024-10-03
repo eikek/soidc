@@ -33,7 +33,10 @@ object Uri:
       s"${u}/${p}"
 
     def appendQuery(query: Map[String, String]): Uri =
-      val qstr = query.toList
-        .map { case (k, v) => s"${urlEncode(k)}=${urlEncode(v)}" }
-        .mkString("&")
-      s"${self}?${qstr}"
+      if (query.isEmpty) self
+      else {
+        val qstr = query.toList
+          .map { case (k, v) => s"${urlEncode(k)}=${urlEncode(v)}" }
+          .mkString("&")
+        s"${self}?${qstr}"
+      }
