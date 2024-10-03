@@ -47,7 +47,7 @@ object JsonValue:
   def str(value: String): JsonValue = Str(value)
   def num(value: BigDecimal): JsonValue = Num(value)
   def bool(value: Boolean): JsonValue = Bool(value)
-  def arr(v: JsonValue*): JsonValue = Arr(v.toList)
+  def arr[A: ToJson](v: A*): JsonValue = Arr(v.map(_.toJsonValue).toList)
   def obj[A: ToJson](v: (String, A)*): JsonValue = Obj(
     v.map(t => (t._1, t._2.toJsonValue)).toMap
   )
