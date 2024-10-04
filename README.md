@@ -308,7 +308,7 @@ val validator = JwtValidator
   .openId[IO, JoseHeader, SimpleClaims](cfg, client)
   .map(_.forIssuer(_.startsWith("http://issuer"))) // restrict this to the a known issuer
   .unsafeRunSync()
-// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.JwtValidator$$anon$1@113dd051
+// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.JwtValidator$$anon$1@562113ac
 
 validator.validate(jws).unsafeRunSync() == Some(Validate.Result.success)
 // res9: Boolean = true
@@ -380,8 +380,8 @@ val validator = JwtValidator.alwaysValid[IO, JoseHeader, SimpleClaims]
 val withAuth = JwtAuthMiddleware.builder[IO, JoseHeader, SimpleClaims] // capture types here
   .withBearerToken  // get the token from "Authorization Bearer …"
   .withValidator(validator) // use this validator
-  .withOnInvalidToken(IO.println) // print to stdout in case of error
-  .secured  // valid token must exist, use .optional to allow non-authenticated requests
+  .withOnFailure(Response(status = Status.Unauthorized)) // response on validation failure
+  .secured  // valid token must exist, use .securedOrAnonymous to allow non-authenticated requests
 ```
 
 Now, `withAuth` can be used to turn the `testRoutes` into a normal
@@ -416,11 +416,11 @@ val goodReq = badReq.withHeaders(
 ```scala
 val res1 = httpApp.run(badReq).unsafeRunSync()
 // res1: Response[[A >: Nothing <: Any] =>> IO[A]] = (
-//    = Status(code = 404),
+//    = Status(code = 401),
 //    = HttpVersion(major = 1, minor = 1),
-//    = Headers(Content-Type: text/plain; charset=UTF-8, Content-Length: 9),
+//    = Headers(),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@b9f1f88
+//    = org.typelevel.vault.Vault@62779497
 // )
 val res2 = httpApp.run(goodReq).unsafeRunSync()
 // res2: Response[[A >: Nothing <: Any] =>> IO[A]] = (
@@ -428,7 +428,7 @@ val res2 = httpApp.run(goodReq).unsafeRunSync()
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Content-Type: text/plain; charset=UTF-8, Content-Length: 2),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@328dce25
+//    = org.typelevel.vault.Vault@4351da3
 // )
 ```
 

@@ -66,6 +66,7 @@ object ExampleServer extends IOApp:
   def withAuth(realm: ExampleAppRealm) = JwtAuthMiddleware
     .builder[IO, JoseHeader, SimpleClaims]
     .withGeToken(GetToken.anyOf(GetToken.cookie("auth_cookie"), GetToken.bearer))
+    .withOnFailure(Response(status = Status.Unauthorized))
     .withValidator(realm.validator)
     .withRefresh(
       realm.jwtRefresh,

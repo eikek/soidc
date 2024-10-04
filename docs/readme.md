@@ -230,8 +230,8 @@ val validator = JwtValidator.alwaysValid[IO, JoseHeader, SimpleClaims]
 val withAuth = JwtAuthMiddleware.builder[IO, JoseHeader, SimpleClaims] // capture types here
   .withBearerToken  // get the token from "Authorization Bearer …"
   .withValidator(validator) // use this validator
-  .withOnInvalidToken(IO.println) // print to stdout in case of error
-  .secured  // valid token must exist, use .optional to allow non-authenticated requests
+  .withOnFailure(Response(status = Status.Unauthorized)) // response on validation failure
+  .secured  // valid token must exist, use .securedOrAnonymous to allow non-authenticated requests
 ```
 
 Now, `withAuth` can be used to turn the `testRoutes` into a normal
