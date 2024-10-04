@@ -37,6 +37,21 @@ final class Http4sClient[F[_]: Sync](client: Client[F])
         )
     )
 
+  def getDeviceCode(url: JwtUri, body: DeviceCodeRequest)(using
+      ByteDecoder[DeviceCodeResponse]
+  ): F[DeviceCodeResponse] =
+    val uri = Uri.unsafeFromString(url.value)
+    val creds = body.clientSecret.map { sec =>
+      BasicCredentials(body.clientId.value, sec.secret)
+    }
+    client.fetchAs[DeviceCodeResponse](
+      POST(body.asUrlQuery, uri)
+        .withAuthorization(creds)
+        .withContentType(
+          `Content-Type`(MediaType.application.`x-www-form-urlencoded`)
+        )
+    )
+
   extension (self: Request[F])
     def withAuthorization(cred: Option[BasicCredentials]) =
       cred.map(h => self.putHeaders(Authorization(h))).getOrElse(self)

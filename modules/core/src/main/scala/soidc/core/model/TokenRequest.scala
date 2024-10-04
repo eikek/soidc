@@ -79,3 +79,17 @@ object TokenRequest:
         "scope" -> scope.map(_.render)
       ).collect { case (name, Some(v)) => name -> v }.toMap
   }
+
+  final case class Device(
+      deviceCode: DeviceCode,
+      clientId: ClientId,
+      clientSecret: Option[ClientSecret]
+  ) extends TokenRequest {
+    lazy val asMap: Map[String, String] =
+      List(
+        "grant_type" -> GrantType.DeviceCode.render.some,
+        "device_code" -> deviceCode.value.some,
+        "client_id" -> clientId.value.some,
+        "client_secret" -> clientSecret.map(_.secret)
+      ).collect { case (name, Some(v)) => name -> v }.toMap
+  }

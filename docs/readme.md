@@ -277,6 +277,7 @@ class.
 Just a list of related RFCs for reference:
 
 - OAuth https://datatracker.ietf.org/doc/html/rfc6749
+  - Device Flow https://datatracker.ietf.org/doc/html/rfc8628
 - OpenID
   - https://openid.net/specs/openid-connect-core-1_0.html
   - https://openid.net/specs/openid-connect-basic-1_0.html

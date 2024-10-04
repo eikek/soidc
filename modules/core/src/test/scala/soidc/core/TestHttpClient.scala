@@ -2,8 +2,7 @@ package soidc.core
 
 import cats.MonadThrow
 
-import soidc.core.model.TokenRequest
-import soidc.core.model.TokenResponse
+import soidc.core.model.*
 import soidc.jwt.*
 import soidc.jwt.codec.*
 
@@ -25,5 +24,10 @@ object TestHttpClient:
       def getToken(url: Uri, body: TokenRequest)(using
           ByteDecoder[TokenResponse]
       ): F[TokenResponse] =
+        MonadThrow[F].raiseError(new Exception("not implemented"))
+
+      def getDeviceCode(uri: Uri, body: DeviceCodeRequest)(using
+          ByteDecoder[DeviceCodeResponse]
+      ): F[DeviceCodeResponse] =
         MonadThrow[F].raiseError(new Exception("not implemented"))
     }

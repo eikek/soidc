@@ -10,6 +10,11 @@ enum TokenErrorCode:
   case UnauthorizedClient
   case UnsupportedGrantType
   case InvalidScope
+  // for device code flow
+  case AuthorizationPending
+  case SlowDown
+  case AccessDenied
+  case ExpiredToken
 
   lazy val name: String = Util.snakeCase(productPrefix)
 

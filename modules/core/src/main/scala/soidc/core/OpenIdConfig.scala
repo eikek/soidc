@@ -12,6 +12,7 @@ final case class OpenIdConfig(
     tokenEndpoint: Uri,
     userInfoEndpoint: Uri,
     jwksUri: Uri,
+    deviceAuthorizationEndpoint: Option[Uri] = None,
     endSessionEndpoint: Option[Uri] = None,
     claimsParameterSupported: Option[Boolean] = None,
     claimsSupported: List[String] = Nil,
@@ -25,6 +26,7 @@ object OpenIdConfig:
     val authEndpoint = ParameterName.of("authorization_endpoint")
     val tokenEndpoint = ParameterName.of("token_endpoint")
     val userInfoEndpoint = ParameterName.of("userinfo_endpoint")
+    val deviceAuthEndpoint = ParameterName.of("device_authorization_endpoint")
     val jwksUri = ParameterName.of("jwks_uri")
     val endSessionEndpoint = ParameterName.of("end_session_endpoint")
     val claimsParamSupported = ParameterName.of("claims_parameter_supported")
@@ -40,6 +42,7 @@ object OpenIdConfig:
       tokEp <- obj.requireAs[Uri](P.tokenEndpoint)
       userEp <- obj.requireAs[Uri](P.userInfoEndpoint)
       jwks <- obj.requireAs[Uri](P.jwksUri)
+      devEp <- obj.getAs[Uri](P.deviceAuthEndpoint)
       endEp <- obj.getAs[Uri](P.endSessionEndpoint)
       clPS <- obj.getAs[Boolean](P.claimsParamSupported)
       cs <- obj.getAs[List[String]](P.claimsSupported)
@@ -51,6 +54,7 @@ object OpenIdConfig:
       tokEp,
       userEp,
       jwks,
+      devEp,
       endEp,
       clPS,
       cs.orEmpty,
@@ -69,6 +73,7 @@ object OpenIdConfig:
         .replace(P.tokenEndpoint, cfg.tokenEndpoint)
         .replace(P.userInfoEndpoint, cfg.userInfoEndpoint)
         .replace(P.jwksUri, cfg.jwksUri)
+        .replaceIfDefined(P.deviceAuthEndpoint, cfg.deviceAuthorizationEndpoint)
         .replaceIfDefined(P.endSessionEndpoint, cfg.endSessionEndpoint)
         .replace(P.claimsSupported, cfg.claimsSupported)
         .replace(P.grantTypesSupported, cfg.grantTypesSupported)

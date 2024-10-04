@@ -17,6 +17,7 @@ final case class ScopeList private (private val moreScopes: SortedSet[Scope]):
     scopes.toNonEmptyList.map(_.name).toList.mkString(" ")
 
 object ScopeList:
+  val empty: ScopeList = apply()
 
   /** Create a scope list. The `openid` scope is added automatically. */
   def apply(scope: Scope*): ScopeList =
