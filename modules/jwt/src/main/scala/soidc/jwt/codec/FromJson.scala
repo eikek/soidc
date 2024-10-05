@@ -72,6 +72,7 @@ object FromJson:
 
   given [A](using f: FromJson[A]): FromJson[Option[A]] =
     instance {
+      case JsonValue.JsonNull      => Right(None)
       case JsonValue.Arr(Nil)      => Right(None)
       case JsonValue.Arr(h :: Nil) => f.from(h).map(Some(_))
       case JsonValue.Arr(e) =>

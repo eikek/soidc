@@ -2,6 +2,7 @@ package soidc.http4s.routes
 
 import scala.concurrent.duration.*
 
+import cats.data.OptionT
 import cats.effect.*
 import cats.effect.std.Console
 import cats.syntax.all.*
@@ -40,6 +41,21 @@ object ExampleServer extends IOApp:
         )
       )
     }
+
+  // GitHub auth example, enabled if env variables are present
+  def githubFlow(client: Client[IO]): IO[Option[GitHubFlow[IO]]] = {
+    val env = cats.effect.std.Env[IO]
+    val logger = Logger.stderr[IO]
+    val cfg = (
+      OptionT(env.get("GITHUB_CLIENT_ID")).map(ClientId.apply),
+      OptionT(env.get("GITHUB_CLIENT_SECRET")).map(ClientSecret.apply),
+      OptionT.liftF(JwkGenerate.symmetric[IO](16))
+    ).mapN((cid, cs, key) => GitHubOAuth.Config(cid, key, cs.some))
+    cfg
+      .map(GitHubOAuth(_, Http4sClient(client), logger))
+      .map(GitHubFlow(_, logger))
+      .value
+  }
 
   // OpenID Auth-Code-Flow with keycloak
   def authCodeFlow(
@@ -82,7 +98,11 @@ object ExampleServer extends IOApp:
       yield UserPass(un, pw)
   }
 
-  def loginRoute(codeFlow: OpenIdFlow, localFlow: LocalUserFlow): HttpRoutes[IO] =
+  def loginRoute(
+      codeFlow: OpenIdFlow,
+      localFlow: LocalUserFlow,
+      githubFlow: Option[GitHubFlow[IO]]
+  ): HttpRoutes[IO] =
     HttpRoutes.of {
       case req @ GET -> "keycloak" /: _ =>
         val mountUri =
@@ -96,11 +116,34 @@ object ExampleServer extends IOApp:
                 .putHeaders("Auth-Token" -> at.compact)
                 .addCookie(
                   JwtCookie
-                    .create("auth_cookie", at.jws, uri"http://localhost:8888/")
-                    .copy(maxAge = at.claims.expirationTime.map(_.toSeconds))
+                    .createDecoded("auth_cookie", at, uri"http://localhost:8888/")
                 )
             yield rr
         }
+
+      case req @ GET -> "github" /: _ =>
+        githubFlow match
+          case None => NotFound()
+          case Some(flow) =>
+            val mountUri =
+              uri"http://localhost:8888/login/github" // where login route is mounted
+            flow.run(req, mountUri) {
+              case Left(err) => UnprocessableEntity(err.toString())
+              case Right(GitHubFlow.Result.Success(user, tokenResp)) =>
+                for
+                  resp <- Ok(user.toString)
+                  token <- localFlow.createToken(
+                    JoseHeader.jwt,
+                    SimpleClaims.empty.withSubject(StringOrUri(user.id.toString))
+                  )
+                  rr = resp
+                    .putHeaders("Auth-Token" -> token.compact)
+                    .addCookie(
+                      JwtCookie
+                        .createDecoded("auth_cookie", token, uri"http://localhost:8888/")
+                    )
+                yield rr
+            }
 
       case GET -> Root / "local" :? UserPassParam(name, pass) =>
         if (pass != "secret") BadRequest("login failed")
@@ -115,8 +158,7 @@ object ExampleServer extends IOApp:
             .putHeaders("Auth-Token" -> token.jws.compact)
             .addCookie(
               JwtCookie
-                .create("auth_cookie", token.jws, uri"http://localhost:8888/")
-                .copy(maxAge = token.claims.expirationTime.map(_.toSeconds))
+                .createDecoded("auth_cookie", token, uri"http://localhost:8888/")
             )
     }
 
@@ -138,10 +180,10 @@ object ExampleServer extends IOApp:
         case None => Ok("Hello anonymous stranger!")
   }
 
-  def routes(openId: OpenIdFlow, local: LocalUserFlow) =
+  def routes(openId: OpenIdFlow, local: LocalUserFlow, github: Option[GitHubFlow[IO]]) =
     val auth = withAuth(local.or(openId))
     Router(
-      "login" -> loginRoute(openId, local),
+      "login" -> loginRoute(openId, local, github),
       "member" -> auth.secured(memberRoutes),
       "open" -> auth.securedOrAnonymous(maybeMember)
     )
@@ -151,12 +193,13 @@ object ExampleServer extends IOApp:
       for
         tokenStore <- TokenStore.memory[IO, JoseHeader, SimpleClaims]
         openId <- authCodeFlow(client, tokenStore)
+        github <- githubFlow(client)
         local <- localFlow
         server <- EmberServerBuilder
           .default[IO]
           .withHost(host"0.0.0.0")
           .withPort(port"8888")
-          .withHttpApp(routes(openId, local).orNotFound)
+          .withHttpApp(routes(openId, local, github).orNotFound)
           .withShutdownTimeout(Duration.Zero)
           .withErrorHandler { ex =>
             IO.blocking(ex.printStackTrace())

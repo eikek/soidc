@@ -94,13 +94,14 @@ object AuthCodeFlow:
           flow.obtainToken(redirectUri, req.params).flatMap {
             case Left(err) => cont(Result.failure(err))
             case Right(resp) =>
-              resp.accessToken.decode[H, C] match
+              resp.accessTokenJWS.flatMap(_.decode[H, C]) match
                 case Left(err) => cont(Result.failure(err))
                 case Right(jws) =>
                   flow.tokenStore
-                    .setRefreshTokenIfPresent(jws, resp.refreshToken) >> cont(
-                    Result.success(jws, resp)
-                  )
+                    .setRefreshTokenIfPresent(
+                      jws,
+                      resp.refreshTokenJWS.flatMap(_.toOption)
+                    ) >> cont(Result.success(jws, resp))
           }
       }
 

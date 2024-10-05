@@ -12,7 +12,9 @@ object TestHttpClient:
       data: Map[Uri, JsonValue]
   )(using e: ByteEncoder[JsonValue]): HttpClient[F] =
     new HttpClient[F] {
-      def get[A](url: Uri)(using ByteDecoder[A]): F[A] =
+      def get[A](url: Uri, authorization: Option[String] = None)(using
+          ByteDecoder[A]
+      ): F[A] =
         data.get(url) match
           case None => MonadThrow[F].raiseError(new Exception(s"not found: $url"))
           case Some(value) =>

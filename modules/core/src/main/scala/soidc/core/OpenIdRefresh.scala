@@ -25,13 +25,16 @@ final class OpenIdRefresh[F[_]: MonadThrow, H, C](
     tr match {
       case e: TokenResponse.Error => ???
       case s: TokenResponse.Success =>
-        s.accessToken.decode[H, C] match
+        s.accessTokenJWS.flatMap(_.decode[H, C]) match
           case Right(t)  => t.pure[F]
           case Left(err) => MonadThrow[F].raiseError(err)
     }
 
   def updateStore(key: JWSDecoded[H, C])(tr: TokenResponse) =
-    tokenStore.setRefreshTokenIfPresent(key, tr.fold(_ => None, _.refreshToken))
+    tokenStore.setRefreshTokenIfPresent(
+      key,
+      tr.fold(_ => None, _.refreshTokenJWS.flatMap(_.toOption))
+    )
 
   def runRefreshRequest(rt: JWS): F[TokenResponse] =
     for

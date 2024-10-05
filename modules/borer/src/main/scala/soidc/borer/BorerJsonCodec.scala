@@ -29,9 +29,10 @@ trait BorerJsonCodec:
   given Encoder[JsonValue] =
     new Encoder[JsonValue] {
       def write(w: Writer, value: JsonValue): Writer = value match
-        case JsonValue.Str(v)  => w.writeString(v)
-        case JsonValue.Num(v)  => w.write(v)
-        case JsonValue.Bool(v) => w.writeBoolean(v)
+        case JsonValue.JsonNull => w.writeNull()
+        case JsonValue.Str(v)   => w.writeString(v)
+        case JsonValue.Num(v)   => w.write(v)
+        case JsonValue.Bool(v)  => w.writeBoolean(v)
         case JsonValue.Arr(vs) =>
           w.writeArrayOpen(vs.size)
           vs.foreach(v => w.write(v))
@@ -51,7 +52,8 @@ trait BorerJsonCodec:
         DataItem.Long | DataItem.Int | DataItem.Double | DataItem.Float | DataItem.Float16 | DataItem.OverLong | DataItem.NumberString
 
       def read(r: Reader): JsonValue =
-        if (r.hasBoolean) JsonValue.Bool(r.readBoolean())
+        if (r.hasNull) { r.readNull(); JsonValue.jsonNull }
+        else if (r.hasBoolean) JsonValue.Bool(r.readBoolean())
         else if (r.hasString) JsonValue.Str(r.readString())
         else if (r.hasAnyOf(numberItem)) JsonValue.Num(r.read[BigDecimal]())
         else if (r.hasArrayHeader | r.hasArrayStart)

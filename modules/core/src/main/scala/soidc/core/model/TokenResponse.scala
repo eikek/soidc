@@ -6,7 +6,7 @@ import soidc.jwt.*
 import soidc.jwt.codec.*
 
 sealed trait TokenResponse:
-  def isSuccess: Boolean
+  def isSuccess: Boolean = fold(_ => false, _ => true)
   def isError: Boolean = !isSuccess
 
   def fold[A](fe: TokenResponse.Error => A, fs: TokenResponse.Success => A): A
@@ -16,18 +16,25 @@ object TokenResponse:
     FromJson[Error].widen[TokenResponse].orElse(FromJson[Success].widen[TokenResponse])
 
   final case class Success(
-      accessToken: JWS,
+      accessToken: String,
       tokenType: String,
-      refreshToken: Option[JWS],
+      refreshToken: Option[String],
       expiresIn: Option[FiniteDuration],
-      idToken: Option[JWS],
+      idToken: Option[String],
       scope: Option[ScopeList],
       values: JsonValue.Obj
   ) extends TokenResponse {
-    val isSuccess = true
-    def fold[A](fe: TokenResponse.Error => A, fs: TokenResponse.Success => A): A = fs(
-      this
-    )
+    def fold[A](fe: TokenResponse.Error => A, fs: TokenResponse.Success => A): A =
+      fs(this)
+
+    def accessTokenJWS: Either[JwtError.DecodeError, JWS] =
+      JWS.fromString(accessToken).left.map(JwtError.DecodeError(_))
+
+    def idTokenJWS: Option[Either[JwtError.DecodeError, JWS]] =
+      idToken.map(JWS.fromString).map(_.left.map(JwtError.DecodeError(_)))
+
+    def refreshTokenJWS: Option[Either[JwtError.DecodeError, JWS]] =
+      refreshToken.map(JWS.fromString).map(_.left.map(JwtError.DecodeError(_)))
   }
 
   object Success {
@@ -41,11 +48,11 @@ object TokenResponse:
     }
     def fromObj(obj: JsonValue.Obj): Either[JwtError.DecodeError, Success] =
       for
-        at <- obj.requireAs[JWS](P.accessToken)
+        at <- obj.requireAs[String](P.accessToken)
         tt <- obj.requireAs[String](P.tokenType)
-        rt <- obj.getAs[JWS](P.refreshToken)
+        rt <- obj.getAs[String](P.refreshToken)
         exp <- obj.getAs[Long](P.expiresIn)
-        it <- obj.getAs[JWS](P.idToken)
+        it <- obj.getAs[String](P.idToken)
         sc <- obj.getAs[ScopeList](P.scope)
       yield Success(at, tt, rt, exp.map(_.seconds), it, sc, obj)
 
@@ -57,10 +64,8 @@ object TokenResponse:
       description: Option[String],
       uri: Option[Uri]
   ) extends TokenResponse {
-    val isSuccess = false
-    def fold[A](fe: TokenResponse.Error => A, fs: TokenResponse.Success => A): A = fe(
-      this
-    )
+    def fold[A](fe: TokenResponse.Error => A, fs: TokenResponse.Success => A): A =
+      fe(this)
   }
   object Error {
     private object P {

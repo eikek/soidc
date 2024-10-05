@@ -1,9 +1,12 @@
 package soidc.http4s.routes
 
+import org.http4s.HttpDate
 import org.http4s.ResponseCookie
 import org.http4s.SameSite
 import org.http4s.Uri
 import soidc.jwt.JWS
+import soidc.jwt.JWSDecoded
+import soidc.jwt.StandardClaimsRead
 
 object JwtCookie:
 
@@ -18,6 +21,15 @@ object JwtCookie:
       path = Some(path),
       secure = uri.scheme.exists(_.value.endsWith("s")),
       httpOnly = uri.scheme.exists(_.value.startsWith("http"))
+    )
+
+  def createDecoded[H, C](name: String, jwt: JWSDecoded[H, C], uri: Uri)(using
+      StandardClaimsRead[C]
+  ): ResponseCookie =
+    create(name, jwt.jws, uri).copy(
+      expires = StandardClaimsRead[C]
+        .expirationTime(jwt.claims)
+        .flatMap(d => HttpDate.fromEpochSecond(d.toSeconds).toOption)
     )
 
   def remove(name: String, uri: Uri): ResponseCookie =

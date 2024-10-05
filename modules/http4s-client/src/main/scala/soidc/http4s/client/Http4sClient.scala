@@ -4,10 +4,11 @@ import cats.effect.*
 import fs2.io.net.Network
 
 import org.http4s.*
-import org.http4s.Method.POST
+import org.http4s.Method.{GET, POST}
 import org.http4s.client.Client
 import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.ember.client.EmberClientBuilder
+import org.http4s.headers.Accept
 import org.http4s.headers.{Authorization, `Content-Type`}
 import soidc.core.HttpClient
 import soidc.core.model.*
@@ -19,8 +20,11 @@ final class Http4sClient[F[_]: Sync](client: Client[F])
     with Http4sClientDsl[F]
     with ByteEntityDecoder:
 
-  def get[A](url: JwtUri)(using ByteDecoder[A]): F[A] =
-    client.expect(url.value)
+  def get[A](url: JwtUri, bearerToken: Option[String] = None)(using
+      ByteDecoder[A]
+  ): F[A] =
+    val req = GET(Uri.unsafeFromString(url.value)).withBearer(bearerToken)
+    client.expect(req)
 
   def getToken(url: JwtUri, body: TokenRequest)(using
       ByteDecoder[TokenResponse]
@@ -31,7 +35,8 @@ final class Http4sClient[F[_]: Sync](client: Client[F])
     }
     client.fetchAs[TokenResponse](
       POST(body.asUrlQuery, uri)
-        .withAuthorization(creds)
+        .withBasicAuth(creds)
+        .putHeaders(Accept(MediaType.application.json))
         .withContentType(
           `Content-Type`(MediaType.application.`x-www-form-urlencoded`)
         )
@@ -46,15 +51,24 @@ final class Http4sClient[F[_]: Sync](client: Client[F])
     }
     client.fetchAs[DeviceCodeResponse](
       POST(body.asUrlQuery, uri)
-        .withAuthorization(creds)
+        .withBasicAuth(creds)
+        .putHeaders(Accept(MediaType.application.json))
         .withContentType(
           `Content-Type`(MediaType.application.`x-www-form-urlencoded`)
         )
     )
 
   extension (self: Request[F])
-    def withAuthorization(cred: Option[BasicCredentials]) =
-      cred.map(h => self.putHeaders(Authorization(h))).getOrElse(self)
+    def withAuthorizationHeader(header: Option[Authorization]) =
+      header.map(self.putHeaders(_)).getOrElse(self)
+
+    def withBasicAuth(cred: Option[BasicCredentials]) =
+      self.withAuthorizationHeader(cred.map(Authorization(_)))
+
+    def withBearer(token: Option[String]) =
+      self.withAuthorizationHeader(
+        token.map(t => Authorization(Credentials.Token(AuthScheme.Bearer, t)))
+      )
 
 object Http4sClient:
 
