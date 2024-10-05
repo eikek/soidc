@@ -134,7 +134,9 @@ object ExampleServer extends IOApp:
                   resp <- Ok(user.toString)
                   token <- localFlow.createToken(
                     JoseHeader.jwt,
-                    SimpleClaims.empty.withSubject(StringOrUri(user.id.toString))
+                    SimpleClaims.empty
+                      .withSubject(StringOrUri(user.id.toString))
+                      .withValueOpt(OidParameterNames.PreferredUsername, user.login)
                   )
                   rr = resp
                     .putHeaders("Auth-Token" -> token.compact)
@@ -174,8 +176,12 @@ object ExampleServer extends IOApp:
     case ContextRequest(ctx, req @ GET -> Root / "test") =>
       ctx.getToken.map(_.claims) match
         case Some(c) =>
+          val name = c.values
+            .getAs[String](OidParameterNames.PreferredUsername)
+            .toOption.flatten
+            .orElse(c.subject.map(_.value))
           Ok(
-            s"hello ${c.subject}!! You have time until ${c.expirationTime.map(_.asInstant)}"
+            s"hello $name!! You have time until ${c.expirationTime.map(_.asInstant)}"
           )
         case None => Ok("Hello anonymous stranger!")
   }

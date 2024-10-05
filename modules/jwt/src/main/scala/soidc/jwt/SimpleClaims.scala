@@ -34,6 +34,9 @@ final case class SimpleClaims private (
   def withValue[V: ToJson](name: ParameterName, value: V): SimpleClaims =
     copy(values = values.replace(name, value))
 
+  def withValueOpt[V: ToJson](name: ParameterName, value: Option[V]): SimpleClaims =
+    value.map(v => withValue(name, v)).getOrElse(this)
+
   def remove(name: ParameterName): SimpleClaims =
     val nv = values.remove(name)
     name.key match
