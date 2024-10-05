@@ -75,8 +75,6 @@ object FromJson:
       case JsonValue.JsonNull      => Right(None)
       case JsonValue.Arr(Nil)      => Right(None)
       case JsonValue.Arr(h :: Nil) => f.from(h).map(Some(_))
-      case JsonValue.Arr(e) =>
-        Left(DecodeError(s"Array has too many elements to decode as Option[A]: $e"))
       case v => f.from(v).map(Some(_))
     }
 
