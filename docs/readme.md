@@ -4,7 +4,6 @@ A Scala 3 library for adding [OpenID
 Connect](https://openid.net/specs/openid-connect-core-1_0.html)
 support to your projects.
 
-
 ## Modules
 
 ### jwt
@@ -198,6 +197,77 @@ validator.validate(jws).unsafeRunSync() == Some(Validate.Result.success)
 val (otherJws, _) = createJWS(SimpleClaims.empty.withIssuer(StringOrUri("http://other")))
 validator.validate(otherJws).unsafeRunSync() == None
 ```
+
+#### AuthorizationCodeFlow
+
+This supports doing the OpenID Connect "Authorization Code Flow".
+Since the core module doesn't contain a http library, this provides
+the necessary parts separately. It can create the URI for redirecting
+the user agent and getting the access token with the response data
+from the OP. The `http4s-routes` module can do the full cycle based on
+`http4s`.
+
+
+#### DeviceCodeFlow
+
+OAuth2 defines the "Device Code Flow" for devices that aren't browsers
+(like cli tools). This is not part of OpenID Connect, but often
+needed. The `DeviceCodeFlow` trait provides this.
+
+In needs the token endpoint as used with OpenID Connect, and also a
+`deviceAuthorizationEndpoint`. The latter can be obtained from the
+OpenId well-known configuration.
+
+Example:
+```scala mdoc:reset:silent
+import cats.effect.*
+import cats.data.Kleisli
+import soidc.core.model.*
+import soidc.jwt.Uri
+import soidc.borer.given
+import soidc.core.*
+import soidc.http4s.client.Http4sClient
+
+val config = DeviceCodeFlow.Config(
+  deviceAuthorizationEndpoint = Uri.unsafeFromString(
+    "http://soidccnt:8180/realms/master/protocol/openid-connect/auth/device"
+  ),
+  tokenEndpoint = Uri.unsafeFromString(
+    "http://soidccnt:8180/realms/master/protocol/openid-connect/token"
+  )
+)
+
+val req = DeviceCodeRequest(
+  ClientId("example"),
+  Some(ClientSecret("8CCr3yFDuMl3L0MgNSICXgELvuabi5si"))
+)
+val logger = Logger.stdout[IO]
+val onPending = Kleisli(err => logger.debug(s"Authentication pending $err"))
+```
+
+With this setup, the flow can be created and "run":
+```scala mdoc
+val flow = Http4sClient.default[IO].map(c => DeviceCodeFlow[IO](config, c))
+flow.use { f =>
+  f.run(req, onPending).flatMap {
+    case Left(err) => sys.error(err.toString())
+    case Right((dev, poll)) =>
+      for
+        _ <- IO.println(
+          s"Visit ${dev.verificationUri} and enter code ${dev.userCode}, or go to ${dev.verificationUriComplete}"
+        )
+        at <- poll
+        _ <- IO.println(s"Token is: $at")
+      yield ()
+  }
+}
+```
+
+The result is either returning an error from the device code request
+or a success response from that request which then contains the code
+and verification uri to present to the user. Additionally, there is a
+`F[TokenResponse]` that will periodically poll for the token (when
+evaluated).
 
 ### http4s-routes
 

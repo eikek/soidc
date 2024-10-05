@@ -4,7 +4,6 @@ A Scala 3 library for adding [OpenID
 Connect](https://openid.net/specs/openid-connect-core-1_0.html)
 support to your projects.
 
-
 ## Modules
 
 ### jwt
@@ -308,7 +307,7 @@ val validator = JwtValidator
   .openId[IO, JoseHeader, SimpleClaims](cfg, client)
   .map(_.forIssuer(_.startsWith("http://issuer"))) // restrict this to the a known issuer
   .unsafeRunSync()
-// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.JwtValidator$$anon$1@562113ac
+// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.JwtValidator$$anon$1@4a9d65c4
 
 validator.validate(jws).unsafeRunSync() == Some(Validate.Result.success)
 // res9: Boolean = true
@@ -348,6 +347,92 @@ val (otherJws, _) = createJWS(SimpleClaims.empty.withIssuer(StringOrUri("http://
 validator.validate(otherJws).unsafeRunSync() == None
 // res10: Boolean = true
 ```
+
+#### AuthorizationCodeFlow
+
+This supports doing the OpenID Connect "Authorization Code Flow".
+Since the core module doesn't contain a http library, this provides
+the necessary parts separately. It can create the URI for redirecting
+the user agent and getting the access token with the response data
+from the OP. The `http4s-routes` module can do the full cycle based on
+`http4s`.
+
+
+#### DeviceCodeFlow
+
+OAuth2 defines the "Device Code Flow" for devices that aren't browsers
+(like cli tools). This is not part of OpenID Connect, but often
+needed. The `DeviceCodeFlow` trait provides this.
+
+In needs the token endpoint as used with OpenID Connect, and also a
+`deviceAuthorizationEndpoint`. The latter can be obtained from the
+OpenId well-known configuration.
+
+Example:
+```scala
+import cats.effect.*
+import cats.data.Kleisli
+import soidc.core.model.*
+import soidc.jwt.Uri
+import soidc.borer.given
+import soidc.core.*
+import soidc.http4s.client.Http4sClient
+
+val config = DeviceCodeFlow.Config(
+  deviceAuthorizationEndpoint = Uri.unsafeFromString(
+    "http://soidccnt:8180/realms/master/protocol/openid-connect/auth/device"
+  ),
+  tokenEndpoint = Uri.unsafeFromString(
+    "http://soidccnt:8180/realms/master/protocol/openid-connect/token"
+  )
+)
+
+val req = DeviceCodeRequest(
+  ClientId("example"),
+  Some(ClientSecret("8CCr3yFDuMl3L0MgNSICXgELvuabi5si"))
+)
+val logger = Logger.stdout[IO]
+val onPending = Kleisli(err => logger.debug(s"Authentication pending $err"))
+```
+
+With this setup, the flow can be created and "run":
+```scala
+val flow = Http4sClient.default[IO].map(c => DeviceCodeFlow[IO](config, c))
+// flow: Resource[[A >: Nothing <: Any] =>> IO[A], DeviceCodeFlow[[A >: Nothing <: Any] =>> IO[A]]] = Bind(
+//   source = Bind(
+//     source = Bind(
+//       source = Eval(fa = Pure(value = ())),
+//       fs = org.http4s.ember.client.EmberClientBuilder$$Lambda$3677/0x0000000801ab2700@1ba9cad6
+//     ),
+//     fs = cats.effect.kernel.Resource$$Lambda$3679/0x0000000801ab3938@beda9e9
+//   ),
+//   fs = cats.effect.kernel.Resource$$Lambda$3679/0x0000000801ab3938@68591581
+// )
+flow.use { f =>
+  f.run(req, onPending).flatMap {
+    case Left(err) => sys.error(err.toString())
+    case Right((dev, poll)) =>
+      for
+        _ <- IO.println(
+          s"Visit ${dev.verificationUri} and enter code ${dev.userCode}, or go to ${dev.verificationUriComplete}"
+        )
+        at <- poll
+        _ <- IO.println(s"Token is: $at")
+      yield ()
+  }
+}
+// res12: IO[Unit] = FlatMap(
+//   ioe = Pure(value = ()),
+//   f = cats.effect.kernel.Resource$$Lambda$3683/0x0000000801ab4df8@72cbd1c5,
+//   event = cats.effect.tracing.TracingEvent$StackTrace
+// )
+```
+
+The result is either returning an error from the device code request
+or a success response from that request which then contains the code
+and verification uri to present to the user. Additionally, there is a
+`F[TokenResponse]` that will periodically poll for the token (when
+evaluated).
 
 ### http4s-routes
 
@@ -420,7 +505,7 @@ val res1 = httpApp.run(badReq).unsafeRunSync()
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@62779497
+//    = org.typelevel.vault.Vault@140baf33
 // )
 val res2 = httpApp.run(goodReq).unsafeRunSync()
 // res2: Response[[A >: Nothing <: Any] =>> IO[A]] = (
@@ -428,7 +513,7 @@ val res2 = httpApp.run(goodReq).unsafeRunSync()
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Content-Type: text/plain; charset=UTF-8, Content-Length: 2),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@4351da3
+//    = org.typelevel.vault.Vault@1a7b43a1
 // )
 ```
 
@@ -441,6 +526,7 @@ class.
 Just a list of related RFCs for reference:
 
 - OAuth https://datatracker.ietf.org/doc/html/rfc6749
+  - Device Flow https://datatracker.ietf.org/doc/html/rfc8628
 - OpenID
   - https://openid.net/specs/openid-connect-core-1_0.html
   - https://openid.net/specs/openid-connect-basic-1_0.html
