@@ -19,10 +19,10 @@ object Sign:
         yield s
 
       case KeyType.EC =>
-        signAsymmetric(key, payload, EcKey.signAlgoName)
+        signAsymmetric(key, payload, EcKey.signAlgo)
 
       case KeyType.RSA =>
-        signAsymmetric(key, payload, RsaKey.signAlgoName)
+        signAsymmetric(key, payload, RsaKey.signAlgo)
 
       case KeyType.OKP => Left(JwtError.UnsupportedPrivateKey(key.keyType))
 
@@ -36,19 +36,19 @@ object Sign:
   private def signAsymmetric(
       key: JWK,
       payload: Array[Byte],
-      algoName: Algorithm => Either[JwtError.UnsupportedSignatureAlgorithm, String]
+      algoName: Algorithm => Either[JwtError.UnsupportedSignatureAlgorithm, Algorithm.Sign]
   ): Either[JwtError.SignError, ByteVector] =
     for
       alg <- key.algorithm.toRight(JwtError.AlgorithmMissing(key))
-      algName <- algoName(alg)
+      sigAlg <- algoName(alg)
       ppk <- key.getPrivateKey.left.map(JwtError.InvalidPrivateKey(_, key))
-      signature <- wrapSecurityApi(Signature.getInstance(algName))
+      signature <- wrapSecurityApi(Signature.getInstance(sigAlg.id))
       _ <- wrapSecurityApi {
         signature.initSign(ppk)
         signature.update(payload)
       }
       sig <-
-        if (alg.isEC)
+        if (sigAlg.isEC)
           key.values
             .requireAs[Curve](EcKey.ECParam.Crv)
             .left

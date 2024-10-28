@@ -59,7 +59,7 @@ class ValidateTest extends FunSuite:
     val jws = Rfc7515.Appendix1.jwsDecoded
     val goodKey = Rfc7515.Appendix1.symmetricKey
     val wrongKey = Rfc7515.Appendix2.rsaKey
-    val badKey = JWK.symmetric(hex"caffee", Algorithm.HS256)
+    val badKey = JWK.symmetric(hex"caffee", Algorithm.Sign.HS256)
     assertEquals(
       validateSignature(goodKey, jws),
       Result.success

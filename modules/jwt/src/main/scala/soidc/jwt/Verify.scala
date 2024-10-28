@@ -28,10 +28,10 @@ object Verify:
         yield res
 
       case KeyType.EC =>
-        verifyAsymmetric(key, payload, signature, EcKey.signAlgoName)
+        verifyAsymmetric(key, payload, signature, EcKey.signAlgo)
 
       case KeyType.RSA =>
-        verifyAsymmetric(key, payload, signature, RsaKey.signAlgoName)
+        verifyAsymmetric(key, payload, signature, RsaKey.signAlgo)
 
       case KeyType.OKP =>
         Left(JwtError.UnsupportedPublicKey(key.keyType))
@@ -40,20 +40,20 @@ object Verify:
       key: JWK,
       payload: Array[Byte],
       sig: Array[Byte],
-      algoName: Algorithm => Either[JwtError.VerifyError, String]
+      algoName: Algorithm => Either[JwtError.VerifyError, Algorithm.Sign]
   ): Either[JwtError.VerifyError, Boolean] =
     for
       alg <- key.algorithm.toRight(JwtError.AlgorithmMissing(key))
-      algName <- algoName(alg)
+      sigAlg <- algoName(alg)
       pk <- key.getPublicKey.left.map(JwtError.InvalidPublicKey(_, key))
       signature <- wrapSecurityApi {
-        val sig = Signature.getInstance(algName)
+        val sig = Signature.getInstance(sigAlg.id)
         sig.initVerify(pk)
         sig.update(payload)
         sig
       }
       res <-
-        if (alg.isEC)
+        if (sigAlg.isEC)
           rsSignatureToDER(ByteVector.view(sig))
             .flatMap(s => wrapSecurityApi(signature.verify(s.toArray)))
         else wrapSecurityApi(signature.verify(sig))

@@ -57,7 +57,7 @@ private[jwt] object RsaKey:
 
   def fromPkcs8PrivateKey(key: String, alg: Algorithm): Either[JwtError, JWK] =
     for
-      _ <- signAlgoName(alg)
+      _ <- signAlgo(alg)
       b64 <- ByteVector
         .fromBase64Descriptive(
           key
@@ -96,7 +96,7 @@ private[jwt] object RsaKey:
 
   def fromPkcs8PubKey(key: String, alg: Algorithm): Either[JwtError, JWK] =
     for
-      _ <- signAlgoName(alg)
+      _ <- signAlgo(alg)
       b64 <- ByteVector
         .fromBase64Descriptive(
           key
@@ -121,11 +121,16 @@ private[jwt] object RsaKey:
         .withValue(Param.E, Base64String.encode(ppk.getPublicExponent()))
     yield jwk
 
-  private[jwt] def signAlgoName(
+  private[jwt] def signAlgo(
       alg: Algorithm
-  ): Either[JwtError.UnsupportedSignatureAlgorithm, String] =
-    alg match
-      case Algorithm.RS256 => Right("SHA256withRSA")
-      case Algorithm.RS384 => Right("SHA384withRSA")
-      case Algorithm.RS512 => Right("SHA512withRSA")
-      case _               => Left(JwtError.UnsupportedSignatureAlgorithm(alg))
+  ): Either[JwtError.UnsupportedSignatureAlgorithm, Algorithm.Sign] =
+    alg.mapBoth(
+      {
+
+        case a @ Algorithm.Sign.RS256 => Right(a)
+        case a @ Algorithm.Sign.RS384 => Right(a)
+        case a @ Algorithm.Sign.RS512 => Right(a)
+        case _                        => Left(JwtError.UnsupportedSignatureAlgorithm(alg))
+      },
+      _ => Left(JwtError.UnsupportedSignatureAlgorithm(alg))
+    )

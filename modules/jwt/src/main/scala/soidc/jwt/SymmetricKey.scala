@@ -15,16 +15,20 @@ private object SymmetricKey:
       k = k64.decoded
     yield k
 
-  private[jwt] def hmacName(alg: Algorithm): Either[JwtError, String] =
-    alg match
-      case Algorithm.HS256 => Right("HmacSHA256")
-      case Algorithm.HS384 => Right("HmacSHA384")
-      case Algorithm.HS512 => Right("HmacSHA512")
-      case _               => Left(JwtError.UnsupportedHmacAlgorithm(alg))
+  private[jwt] def hmacAlg(alg: Algorithm): Either[JwtError, Algorithm.Sign] =
+    alg.mapBoth(
+      {
+        case a @ Algorithm.Sign.HS256 => Right(a)
+        case a @ Algorithm.Sign.HS384 => Right(a)
+        case a @ Algorithm.Sign.HS512 => Right(a)
+        case _                        => Left(JwtError.UnsupportedHmacAlgorithm(alg))
+      },
+      _ => Left(JwtError.UnsupportedHmacAlgorithm(alg))
+    )
 
   def asHmacSecretKey(key: JWK, alg: Algorithm): Either[JwtError, SecretKeySpec] =
     for
       k <- create(key)
-      name <- hmacName(alg)
-      ks = SecretKeySpec(k.toArray, name)
+      hm <- hmacAlg(alg)
+      ks = SecretKeySpec(k.toArray, hm.id)
     yield ks

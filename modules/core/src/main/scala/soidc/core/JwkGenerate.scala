@@ -20,7 +20,7 @@ object JwkGenerate:
 
   def symmetric[F[_]: Sync](
       len: Int = 16,
-      algorithm: Algorithm = Algorithm.HS256
+      algorithm: Algorithm.Sign = Algorithm.Sign.HS256
   ): F[JWK] =
     for
       _ <- Sync[F].whenA(!algorithm.isHMAC)(
@@ -34,7 +34,7 @@ object JwkGenerate:
     yield key
 
   def rsa[F[_]: Sync](
-      algorithm: Algorithm = Algorithm.RS256,
+      algorithm: Algorithm.Sign = Algorithm.Sign.RS256,
       bits: 2048 | 3072 | 4096 = 2048
   ): F[JWK] =
     for
@@ -48,7 +48,7 @@ object JwkGenerate:
     yield key
 
   def ec[F[_]: Sync](
-      algorithm: Algorithm = Algorithm.ES256,
+      algorithm: Algorithm.Sign = Algorithm.Sign.ES256,
       curve: Curve = Curve.P256
   ): F[JWK] =
     (for

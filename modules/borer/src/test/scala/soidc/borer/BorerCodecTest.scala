@@ -17,12 +17,12 @@ class BorerCodecTest extends FunSuite:
     val parts = JWS.unsafeFromString(token)
     val header = parts.header.as[JoseHeader].fold(throw _, identity)
     val expect =
-      JoseHeader.jwt.withAlgorithm(Algorithm.HS256)
+      JoseHeader.jwt.withAlgorithm(Algorithm.Sign.HS256)
     assertEquals(header, expect)
 
   test("encode jwt header"):
     val header =
-      JoseHeader.jwt.withAlgorithm(Algorithm.HS256)
+      JoseHeader.jwt.withAlgorithm(Algorithm.Sign.HS256)
     val json = header.toJsonUtf8
     assertEquals(json, """{"typ":"JWT","alg":"HS256"}""")
 

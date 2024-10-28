@@ -62,8 +62,8 @@ final case class JWK(
     for
       bv <- getSymmetricKey
       alg <- algorithm.map(Right(_)).getOrElse(values.requireAs[Algorithm](P.Alg))
-      name <- SymmetricKey.hmacName(alg)
-    yield SecretKeySpec(bv.toArray, name)
+      hm <- SymmetricKey.hmacAlg(alg)
+    yield SecretKeySpec(bv.toArray, hm.id)
 
 object JWK:
   def symmetric(key: ByteVector, alg: Algorithm): JWK =

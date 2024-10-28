@@ -43,8 +43,8 @@ class EcDerCodecTest extends FunSuite with Syntax:
     signer.verify(derSignature)
 
   test("encode and decode java generated der signature with static key"):
-    val derSig = createCorrectDerSignature(sample, ecPrivateKey, Algorithm.ES256)
-    assert(verifySignature(sample, derSig.toArray, ecPublicKey, Algorithm.ES256))
+    val derSig = createCorrectDerSignature(sample, ecPrivateKey, Algorithm.Sign.ES256)
+    assert(verifySignature(sample, derSig.toArray, ecPublicKey, Algorithm.Sign.ES256))
     val rsSig = EcDerCodec.derSignatureToRS(derSig, 64).value
     val backDer = EcDerCodec.rsSignatureToDER(rsSig).value
     assertEquals(backDer, derSig)
@@ -55,7 +55,7 @@ class EcDerCodecTest extends FunSuite with Syntax:
     assertEquals(backDer, javaDerSig)
 
   for {
-    alg <- List(Algorithm.ES256, Algorithm.ES384, Algorithm.ES512)
+    alg <- List(Algorithm.Sign.ES256, Algorithm.Sign.ES384, Algorithm.Sign.ES512)
     crv <- Curve.values
   }
     test(s"encode and decode java generated der signature $alg $crv"):
@@ -68,9 +68,9 @@ class EcDerCodecTest extends FunSuite with Syntax:
 
   extension (alg: Algorithm)
     def javaName: String = alg match
-      case Algorithm.ES256 => "SHA256withECDSA"
-      case Algorithm.ES384 => "SHA384withECDSA"
-      case Algorithm.ES512 => "SHA512withECDSA"
+      case Algorithm.Sign.ES256 => "SHA256withECDSA"
+      case Algorithm.Sign.ES384 => "SHA384withECDSA"
+      case Algorithm.Sign.ES512 => "SHA512withECDSA"
       case _               => throw JwtError.UnsupportedSignatureAlgorithm(alg)
 
   extension (self: Curve)

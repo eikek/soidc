@@ -67,7 +67,7 @@ private object EcKey:
       alg: Algorithm
   ): Either[JwtError, JWK] =
     for
-      _ <- signAlgoName(alg)
+      _ <- signAlgo(alg)
 
       jwkpp <- fromPkcs8PrivateKey(privateKey, alg)
       jwkpl <- fromPkcs8PubKey(publicKey, alg)
@@ -105,7 +105,7 @@ private object EcKey:
       alg: Algorithm
   ): Either[JwtError, JWK] =
     for
-      _ <- signAlgoName(alg)
+      _ <- signAlgo(alg)
       ppkey <- readEcPrivateKey(privateKey)
       jwk <- fromECPrivateKey(ppkey, alg)
     yield jwk
@@ -131,7 +131,7 @@ private object EcKey:
       alg: Algorithm
   ): Either[JwtError, JWK] =
     for
-      _ <- signAlgoName(alg)
+      _ <- signAlgo(alg)
       plkey <- readEcPubliceKey(publicKey)
       jwk <- fromECPublicKey(plkey, alg)
     yield jwk
@@ -161,14 +161,18 @@ private object EcKey:
         .withValue(ECParam.Crv, crv)
     yield jwk
 
-  private[jwt] def signAlgoName(
+  private[jwt] def signAlgo(
       alg: Algorithm
-  ): Either[JwtError.UnsupportedSignatureAlgorithm, String] =
-    alg match
-      case Algorithm.ES256 => Right("SHA256withECDSA")
-      case Algorithm.ES384 => Right("SHA384withECDSA")
-      case Algorithm.ES512 => Right("SHA512withECDSA")
-      case _               => Left(JwtError.UnsupportedSignatureAlgorithm(alg))
+  ): Either[JwtError.UnsupportedSignatureAlgorithm, Algorithm.Sign] =
+    alg.mapBoth(
+      {
+        case a @ Algorithm.Sign.ES256 => Right(a)
+        case a @ Algorithm.Sign.ES384 => Right(a)
+        case a @ Algorithm.Sign.ES512 => Right(a)
+        case _                        => Left(JwtError.UnsupportedSignatureAlgorithm(alg))
+      },
+      _ => Left(JwtError.UnsupportedSignatureAlgorithm(alg))
+    )
 
   private[jwt] def readEcPrivateKey(key: String): Either[JwtError, ECPrivateKey] =
     for

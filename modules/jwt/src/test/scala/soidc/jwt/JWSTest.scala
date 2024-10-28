@@ -56,7 +56,7 @@ class JWSTest extends FunSuite with Syntax:
     assert(JWS.fromString("uiaeuaieu").isLeft)
 
   test("decode value"):
-    val header = JoseHeader.empty.withAlgorithm(Algorithm.HS256)
+    val header = JoseHeader.empty.withAlgorithm(Algorithm.Sign.HS256)
     given ByteDecoder[JoseHeader] = ByteDecoder.instance(bv =>
       Either.cond(
         bv == ByteVector.fromValidBase64("eyJ0eXAiOiJKV1QiLA0KICJhbGciOiJIUzI1NiJ9"),
@@ -139,7 +139,7 @@ class JWSTest extends FunSuite with Syntax:
     assert(jws.verifySignature(data.ecKey).value)
 
   test("imported rsa private key"):
-    val jwk = JWK.rsaPrivate(KeyData.rsaPem, Algorithm.RS256).value
+    val jwk = JWK.rsaPrivate(KeyData.rsaPem, Algorithm.Sign.RS256).value
     val jws = JWS(
       // {"typ":"JWT","alg":"RS256"}
       Base64String.unsafeOf("eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9"),
@@ -149,7 +149,7 @@ class JWSTest extends FunSuite with Syntax:
     assert(jws.verifySignature(jwk).value)
 
   test("imported rsa public key"):
-    val jwk = JWK.rsaPrivate(KeyData.rsaPem, Algorithm.RS256).value
+    val jwk = JWK.rsaPrivate(KeyData.rsaPem, Algorithm.Sign.RS256).value
     val jws = JWS(
       // {"typ":"JWT","alg":"RS256"}
       Base64String.unsafeOf("eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9"),
@@ -157,11 +157,11 @@ class JWSTest extends FunSuite with Syntax:
       Base64String.unsafeOf("eyJpc3MiOiJtZSBteXNlbGYifQ")
     ).signWith(jwk).value
     assert(jws.verifySignature(jwk).value)
-    val pk = JWK.rsaKey(KeyData.rsaPub, Algorithm.RS256).value
+    val pk = JWK.rsaKey(KeyData.rsaPub, Algorithm.Sign.RS256).value
     assert(jws.verifySignature(pk).value)
 
   test("imported ec key".only):
-    val jwk = JWK.ecKeyPair(KeyData.ecPrivate, KeyData.ecPublic, Algorithm.ES256).value
+    val jwk = JWK.ecKeyPair(KeyData.ecPrivate, KeyData.ecPublic, Algorithm.Sign.ES256).value
     val jws = JWS(
       // {"typ":"JWT","alg":"ES256"}
       Base64String.unsafeOf("eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9"),

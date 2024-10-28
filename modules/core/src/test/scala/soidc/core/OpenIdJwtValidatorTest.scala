@@ -15,7 +15,7 @@ class OpenIdJwtValidatorTest extends CatsEffectSuite:
     def keyId = KeyId.unsafeFromString(self)
 
   def createJWS(claims: SimpleClaims, kid: String = "key1"): (DefaultJWS, JWK) =
-    val alg = Algorithm.HS256
+    val alg = Algorithm.Sign.HS256
     val jwk = JWK.symmetric(Base64String.encodeString("hello"), alg).withKeyId(kid.keyId)
     val jws = JWSDecoded.createSigned(
       JoseHeader.jwt.withAlgorithm(alg).withKeyId(kid.keyId),

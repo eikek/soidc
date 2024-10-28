@@ -8,7 +8,7 @@ import soidc.jwt.*
 class JwkGenerateTest extends CatsEffectSuite:
 
   val testCases =
-    Algorithm.values.toList.flatMap {
+    Algorithm.Sign.values.toList.flatMap {
       case a if a.isHMAC =>
         List((s"$a (len=16)", JwkGenerate.symmetric[IO](16, a)))
 

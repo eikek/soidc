@@ -87,7 +87,7 @@ object JWS:
           c64 <- Base64String.of(c)
         yield JWS(h64, c64, None)
       case _ =>
-        Left(s"Invalid JWT: $str")
+        Left(s"Invalid JWS: $str")
     }
 
   def unsafeFromString(s: String): JWS =

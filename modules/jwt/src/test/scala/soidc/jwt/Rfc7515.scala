@@ -5,7 +5,7 @@ object Rfc7515:
 
   object Appendix1 {
     val header: JoseHeader =
-      JoseHeader.empty.withAlgorithm(Algorithm.HS256)
+      JoseHeader.empty.withAlgorithm(Algorithm.Sign.HS256)
 
     val header64: Base64String =
       Base64String.unsafeOf("eyJ0eXAiOiJKV1QiLA0KICJhbGciOiJIUzI1NiJ9")
@@ -28,7 +28,7 @@ object Rfc7515:
             "AyM1SysPpbyDfgZld3umj1qzKObwVMkoqQ-EstJQLr_",
             "T-1qS0gZH75aKtMN3Yj0iPS4hcgUuTwjAzZr1Z9CAow"
           ),
-          Algorithm.HS256
+          Algorithm.Sign.HS256
         )
         .withKeyType(KeyType.OCT)
         .withKeyId(KeyId.unsafeFromString("appendix1"))
@@ -41,14 +41,14 @@ object Rfc7515:
   }
 
   object Appendix2 {
-    val header: JoseHeader = JoseHeader.empty.withAlgorithm(Algorithm.RS256)
+    val header: JoseHeader = JoseHeader.empty.withAlgorithm(Algorithm.Sign.RS256)
     val header64: Base64String = Base64String.unsafeOf("eyJhbGciOiJSUzI1NiJ9")
 
     val claim: SimpleClaims = Appendix1.claim
     val claim64: Base64String = Appendix1.claim64
 
     val rsaKey: JWK = JWK(KeyType.RSA)
-      .withAlgorithm(Algorithm.RS256)
+      .withAlgorithm(Algorithm.Sign.RS256)
       .withKeyId(KeyId.unsafeFromString("appendix2"))
       .withKeyType(KeyType.RSA)
       .withValue(
@@ -103,7 +103,7 @@ object Rfc7515:
   }
 
   object Appendix3 {
-    val header: JoseHeader = JoseHeader.empty.withAlgorithm(Algorithm.ES256)
+    val header: JoseHeader = JoseHeader.empty.withAlgorithm(Algorithm.Sign.ES256)
     val header64: Base64String = Base64String.unsafeOf("eyJhbGciOiJFUzI1NiJ9")
 
     val claim: SimpleClaims = Appendix1.claim
@@ -111,7 +111,7 @@ object Rfc7515:
 
     val ecKey: JWK =
       JWK(KeyType.EC)
-        .withAlgorithm(Algorithm.ES256)
+        .withAlgorithm(Algorithm.Sign.ES256)
         .withKeyId(KeyId.unsafeFromString("appendix3"))
         .withValue(EcKey.ECParam.Crv, Curve.P256)
         .withValue(
@@ -145,7 +145,7 @@ object Rfc7515:
   }
 
   object Appendix4 {
-    val header: JoseHeader = JoseHeader.empty.withAlgorithm(Algorithm.ES512)
+    val header: JoseHeader = JoseHeader.empty.withAlgorithm(Algorithm.Sign.ES512)
     val header64: Base64String = Base64String.unsafeOf("eyJhbGciOiJFUzUxMiJ9")
 
     val claim64: Base64String = Base64String.unsafeOf("UGF5bG9hZA")
@@ -153,7 +153,7 @@ object Rfc7515:
 
     val ecKey: JWK =
       JWK(KeyType.EC)
-        .withAlgorithm(Algorithm.ES512)
+        .withAlgorithm(Algorithm.Sign.ES512)
         .withKeyId(KeyId.unsafeFromString("appendix4"))
         .withValue(EcKey.ECParam.Crv, Curve.P521)
         .withValue(
