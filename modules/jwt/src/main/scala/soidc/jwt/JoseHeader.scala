@@ -55,6 +55,12 @@ object JoseHeader:
   /** Initialize the `typ` property with "JWT". */
   val jwt: JoseHeader = empty.withValue(P.Typ, "JWT")
 
+  def jwe(
+      alg: Algorithm.Encrypt = Algorithm.Encrypt.RSA_OAEP,
+      ce: ContentEncryptionAlgorithm = ContentEncryptionAlgorithm.A256GCM
+  ): JoseHeader =
+    empty.withAlgorithm(alg).withValue(P.Enc, ce)
+
   def fromObj(values: JsonValue.Obj): Either[DecodeError, JoseHeader] =
     for
       alg <- values.getAs[Algorithm](P.Alg)

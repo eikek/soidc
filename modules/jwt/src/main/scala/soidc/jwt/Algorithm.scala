@@ -40,19 +40,32 @@ object Algorithm:
         case ES256 | ES384 | ES512 => ec(this)
   }
 
+  object Sign {
+    def fromString(str: String): Either[String, Algorithm.Sign] =
+      Algorithm.Sign.values
+        .find(_.name.equalsIgnoreCase(str))
+        .toRight(s"Invalid algorithm: $str")
+  }
+
   enum Encrypt extends Algorithm {
     case RSA_OAEP
+    case RSA_OAEP_256
 
-    def name: String = productPrefix.replace('_', '-')
-    def keyType: KeyType = KeyType.RSA
+    lazy val name: String = productPrefix.replace('_', '-')
+    val keyType: KeyType = KeyType.RSA
 
     def mapBoth[A](fa: Algorithm.Sign => A, fb: Algorithm.Encrypt => A): A = fb(this)
   }
 
+  object Encrypt {
+    def fromString(str: String): Either[String, Algorithm.Encrypt] =
+      Algorithm.Encrypt.values
+        .find(_.name.equalsIgnoreCase(str))
+        .toRight(s"Invalid algorithm: $str")
+  }
+
   def fromString(str: String): Either[String, Algorithm] =
-    Algorithm.Sign.values
-      .find(_.name.equalsIgnoreCase(str))
-      .toRight(s"Invalid algorithm: $str")
+    Sign.fromString(str).orElse(Encrypt.fromString(str))
 
   given FromJson[Algorithm] = FromJson.str(s => fromString(s).left.map(DecodeError(_)))
   given ToJson[Algorithm] = ToJson[String].contramap(_.name)

@@ -353,6 +353,7 @@ Just a list of related RFCs for reference:
   - https://openid.net/specs/openid-connect-basic-1_0.html
   - https://openid.net/specs/openid-connect-rpinitiated-1_0.html
 - JWS https://datatracker.ietf.org/doc/html/rfc7515
+- JWE https://datatracker.ietf.org/doc/html/rfc7516
 - JWK https://datatracker.ietf.org/doc/html/rfc7517
 - JWA https://datatracker.ietf.org/doc/html/rfc7518
 - JWT https://datatracker.ietf.org/doc/html/rfc7519

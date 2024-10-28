@@ -9,6 +9,7 @@ trait JwtError extends Throwable
 object JwtError:
   sealed trait VerifyError extends JwtError
   sealed trait SignError extends JwtError
+  sealed trait EncryptError extends JwtError
 
   final case class DecodeError(message: String, cause: Option[Throwable] = None)
       extends RuntimeException(message)
@@ -64,6 +65,13 @@ object JwtError:
       )
       with VerifyError
       with SignError
+      with NoStackTrace
+
+  final case class UnsupportedEncryptionKey(kty: KeyType)
+      extends RuntimeException(
+        s"Unsupported key for encryption: $kty"
+      )
+      with EncryptError
       with NoStackTrace
 
   final case class InvalidPublicKey(cause: JwtError, jwk: JWK)
