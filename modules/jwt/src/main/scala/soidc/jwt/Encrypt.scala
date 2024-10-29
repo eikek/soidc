@@ -1,39 +1,44 @@
 package soidc.jwt
 
 import scodec.bits.ByteVector
-import java.security.PublicKey
-import javax.crypto.Cipher
-import java.security.PrivateKey
-import java.security.SecureRandom
-import javax.crypto.SecretKey
-import javax.crypto.spec.SecretKeySpec
+import soidc.jwt.codec.ByteEncoder
 
 private[jwt] object Encrypt:
-  private val rsaOaep = "RSA/ECB/OAEPWithSHA-256AndMGF1Padding"
-  private val rsaOaep1= "RSA/ECB/OAEPWithSHA1AndMGF1Padding"
 
-  def encryptCEK1(cek: SecretKey, pk: PublicKey): Either[JwtError, ByteVector] =
-    encryptCEK(cek, pk, rsaOaep1)
+  def encrypt(
+      alg: Algorithm.Encrypt,
+      enc: ContentEncryptionAlgorithm,
+      clearText: ByteVector,
+      key: JWK
+  )(using henc: ByteEncoder[JoseHeader]): Either[JwtError, JWE] = {
 
-  def decryptCEK1(data: Array[Byte], pk: PrivateKey): Either[JwtError, SecretKeySpec] =
-    decryptCEK(data, pk, rsaOaep1)
+    val header = JoseHeader.jwe(alg, enc)
+    val headerEncoded = Base64String.encode(henc.encode(header))
 
-  def encryptCEK256(cek: SecretKey, pk: PublicKey): Either[JwtError, ByteVector] =
-    encryptCEK(cek, pk, rsaOaep)
+    val (cek, iv) =
+      enc match
+        case a: ContentEncryptionAlgorithm.GCM =>
+          (AesGcm.generateKey(a.bits), AesGcm.generateIV)
+        case _: ContentEncryptionAlgorithm.CBC =>
+          ???
 
-  def decryptCEK256(data: Array[Byte], pk: PrivateKey): Either[JwtError, SecretKeySpec] =
-    decryptCEK(data, pk, rsaOaep)
+    val cekEncrypted = alg match
+      case Algorithm.Encrypt.RSA_OAEP =>
+        RsaKey.createPublicKey(key).flatMap(pk => RsaOaep.encryptCEK1(cek, pk))
+      case Algorithm.Encrypt.RSA_OAEP_256 =>
+        RsaKey.createPublicKey(key).flatMap(pk => RsaOaep.encryptCEK256(cek, pk))
 
-  private def encryptCEK(cek: SecretKey, pk: PublicKey, alg: String): Either[JwtError, ByteVector] =
-    wrapSecurityApi {
-      val cipher = Cipher.getInstance(alg)
-      cipher.init(Cipher.ENCRYPT_MODE, pk, new SecureRandom)
-      ByteVector.view(cipher.doFinal(cek.getEncoded()))
-    }
+    val result =
+      AesGcm.encrypt(cek, iv, clearText, ByteVector.view(headerEncoded.value.getBytes()))
 
-  private def decryptCEK(data: Array[Byte], pk: PrivateKey, alg: String): Either[JwtError, SecretKeySpec] =
-    wrapSecurityApi {
-      val cipher = Cipher.getInstance(alg)
-      cipher.init(Cipher.DECRYPT_MODE, pk)
-      new SecretKeySpec(cipher.doFinal(data), "AES")
-    }
+    for
+      cenc <- cekEncrypted
+      res <- result
+    yield JWE(
+      header = headerEncoded,
+      encryptedKey = Base64String.encode(cenc),
+      iv = Base64String.encode(res.iv),
+      cipherText = Base64String.encode(res.cipherText),
+      authTag = Base64String.encode(res.authTag)
+    )
+  }

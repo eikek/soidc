@@ -47,6 +47,7 @@ object Algorithm:
         .toRight(s"Invalid algorithm: $str")
   }
 
+  /** See https://datatracker.ietf.org/doc/html/rfc7518#section-4.1 */
   enum Encrypt extends Algorithm {
     case RSA_OAEP
     case RSA_OAEP_256

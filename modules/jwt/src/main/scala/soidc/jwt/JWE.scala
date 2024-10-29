@@ -1,12 +1,22 @@
 package soidc.jwt
 
+import scodec.bits.ByteVector
+import soidc.jwt.codec.ByteEncoder
+import soidc.jwt.codec.ByteDecoder
+
 final case class JWE(
     header: Base64String,
     encryptedKey: Base64String,
-    initv: Base64String,
+    iv: Base64String,
     cipherText: Base64String,
     authTag: Base64String
-)
+):
+
+  def compact: String =
+    s"${header.value}.${encryptedKey.value}.${iv.value}.${cipherText.value}.${authTag.value}"
+
+  def decrypt(key: JWK)(using ByteDecoder[JoseHeader]): Either[JwtError, ByteVector] =
+    Decrypt.decrypt(key, this)
 
 object JWE:
 
@@ -23,3 +33,11 @@ object JWE:
       case _ =>
         Left(s"Invalid JWE: $str")
     }
+
+  def encrypt(
+      alg: Algorithm.Encrypt,
+      enc: ContentEncryptionAlgorithm,
+      clearText: ByteVector,
+      key: JWK
+  )(using ByteEncoder[JoseHeader]): Either[JwtError, JWE] =
+    Encrypt.encrypt(alg, enc, clearText, key)
