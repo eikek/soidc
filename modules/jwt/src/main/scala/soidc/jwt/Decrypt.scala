@@ -13,6 +13,9 @@ private[jwt] object Decrypt:
       header <- hdec.decode(jwe.header.decoded)
 
       cek <- header.values.requireAs[Algorithm.Encrypt](P.Alg).flatMap {
+        case Algorithm.Encrypt.dir =>
+          SymmetricKey.asAESSecretKey(key)
+
         case Algorithm.Encrypt.RSA_OAEP =>
           RsaKey
             .createPrivateKey(key)

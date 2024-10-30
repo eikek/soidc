@@ -16,13 +16,22 @@ private[jwt] object Encrypt:
       alg <- header.values.requireAs[Algorithm.Encrypt](P.Alg)
       enc <- header.values.requireAs[CEA](P.Enc)
 
-      (cek, iv) = enc match
+      (cek, iv) <- enc match
         case a: CEA.GCM =>
-          (AesGcm.generateKey(a.gcmBits), AesGcm.generateIV)
+          val k =
+            if (alg == Algorithm.Encrypt.dir) SymmetricKey.asAESSecretKey(key)
+            else Right(AesGcm.generateKey(a.gcmBits))
+          k.map(_ -> AesGcm.generateIV)
+
         case a: CEA.CBC =>
-          (AesCbc.generateKey(a.cbcBits).raw, AesCbc.generateIV)
+          val k =
+            if (alg == Algorithm.Encrypt.dir) SymmetricKey.asAESSecretKey(key)
+            else Right(AesCbc.generateKey(a.cbcBits).raw)
+          k.map(_ -> AesCbc.generateIV)
 
       cekEncrypted <- alg match
+        case Algorithm.Encrypt.dir =>
+          Right(ByteVector.empty)
         case Algorithm.Encrypt.RSA_OAEP =>
           RsaKey.createPublicKey(key).flatMap(pk => RsaOaep.encryptCEK1(cek, pk))
         case Algorithm.Encrypt.RSA_OAEP_256 =>

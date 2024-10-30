@@ -53,6 +53,7 @@ object Algorithm:
   enum Encrypt extends Algorithm {
     case RSA_OAEP
     case RSA_OAEP_256
+    case dir
 
     lazy val name: String = productPrefix.replace('_', '-')
     val keyType: KeyType = KeyType.RSA

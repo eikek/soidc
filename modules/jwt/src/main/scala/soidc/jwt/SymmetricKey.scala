@@ -32,3 +32,6 @@ private object SymmetricKey:
       hm <- hmacAlg(alg)
       ks = SecretKeySpec(k.toArray, hm.id)
     yield ks
+
+  def asAESSecretKey(key: JWK): Either[JwtError, SecretKeySpec] =
+    create(key).map(bv => new SecretKeySpec(bv.toArray, "AES"))
