@@ -10,6 +10,7 @@ import javax.crypto.KeyGenerator
 private[jwt] object AesGcm:
   final case class Result(cipherText: ByteVector, authTag: ByteVector, iv: ByteVector)
 
+  val algorithmId = "AES/GCM/NoPadding"
   val ivLengthBits = 96
   val authTagBits = 128
 
@@ -32,7 +33,7 @@ private[jwt] object AesGcm:
       clearText: ByteVector,
       authData: ByteVector
   ) = wrapSecurityApi {
-    val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+    val cipher = Cipher.getInstance(algorithmId)
     val gcmSpec = new GCMParameterSpec(authTagBits, iv.toArray)
     cipher.init(Cipher.ENCRYPT_MODE, secretKey, gcmSpec)
     cipher.updateAAD(authData.toArray)
@@ -69,7 +70,7 @@ private[jwt] object AesGcm:
       authData: ByteVector,
       authTag: ByteVector
   ) = wrapSecurityApi {
-    val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+    val cipher = Cipher.getInstance(algorithmId)
     val gcmSpec = new GCMParameterSpec(authTagBits, iv.toArray)
     cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmSpec)
     cipher.updateAAD(authData.toArray)

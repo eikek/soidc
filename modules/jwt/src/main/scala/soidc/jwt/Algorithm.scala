@@ -1,6 +1,5 @@
 package soidc.jwt
 
-import soidc.jwt.JwtError.DecodeError
 import soidc.jwt.codec.{FromJson, ToJson}
 
 sealed trait Algorithm:
@@ -45,6 +44,9 @@ object Algorithm:
       Algorithm.Sign.values
         .find(_.name.equalsIgnoreCase(str))
         .toRight(s"Invalid algorithm: $str")
+
+    given FromJson[Sign] = FromJson.strm(fromString)
+    given ToJson[Sign] = ToJson.forString.contramap(_.name)
   }
 
   /** See https://datatracker.ietf.org/doc/html/rfc7518#section-4.1 */
@@ -63,10 +65,13 @@ object Algorithm:
       Algorithm.Encrypt.values
         .find(_.name.equalsIgnoreCase(str))
         .toRight(s"Invalid algorithm: $str")
+
+    given FromJson[Encrypt] = FromJson.strm(fromString)
+    given ToJson[Encrypt] = ToJson.forString.contramap(_.name)
   }
 
   def fromString(str: String): Either[String, Algorithm] =
     Sign.fromString(str).orElse(Encrypt.fromString(str))
 
-  given FromJson[Algorithm] = FromJson.str(s => fromString(s).left.map(DecodeError(_)))
-  given ToJson[Algorithm] = ToJson[String].contramap(_.name)
+  given FromJson[Algorithm] = FromJson.strm(fromString)
+  given ToJson[Algorithm] = ToJson.forString.contramap(_.name)

@@ -4,31 +4,53 @@ import soidc.jwt.codec.{FromJson, ToJson}
 import soidc.jwt.JwtError.DecodeError
 
 /** See https://datatracker.ietf.org/doc/html/rfc7518#section-5 */
-enum ContentEncryptionAlgorithm(val id: String, val bits: 128 | 192 | 256):
+enum ContentEncryptionAlgorithm(val bits: 128 | 192 | 256 | 384 | 512):
   case A128GCM
-      extends ContentEncryptionAlgorithm("AES/GCM/NoPadding", 128)
-      with ContentEncryptionAlgorithm.GCM
+      extends ContentEncryptionAlgorithm(128)
+      with ContentEncryptionAlgorithm.GCM128
   case A192GCM
-      extends ContentEncryptionAlgorithm("AES/GCM/NoPadding", 192)
-      with ContentEncryptionAlgorithm.GCM
+      extends ContentEncryptionAlgorithm(192)
+      with ContentEncryptionAlgorithm.GCM192
   case A256GCM
-      extends ContentEncryptionAlgorithm("AES/GCM/NoPadding", 256)
-      with ContentEncryptionAlgorithm.GCM
+      extends ContentEncryptionAlgorithm(256)
+      with ContentEncryptionAlgorithm.GCM256
   case A128CBC_HS256
-      extends ContentEncryptionAlgorithm("AES/CBC/PKCS5Padding", 128)
-      with ContentEncryptionAlgorithm.CBC
+      extends ContentEncryptionAlgorithm(256)
+      with ContentEncryptionAlgorithm.CBC256
   case A192CBC_HS384
-      extends ContentEncryptionAlgorithm("AES/CBC/PKCS5Padding", 192)
-      with ContentEncryptionAlgorithm.CBC
+      extends ContentEncryptionAlgorithm(384)
+      with ContentEncryptionAlgorithm.CBC384
   case A256CBC_HS512
-      extends ContentEncryptionAlgorithm("AES/CBC/PKCS5Padding", 256)
-      with ContentEncryptionAlgorithm.CBC
+      extends ContentEncryptionAlgorithm(512)
+      with ContentEncryptionAlgorithm.CBC512
 
   lazy val name: String = productPrefix.replace('-', '_')
 
 object ContentEncryptionAlgorithm:
-  sealed trait GCM
-  sealed trait CBC
+  sealed trait GCM {
+    def gcmBits: 128 | 192 | 256
+  }
+  sealed trait GCM128 extends GCM {
+    val gcmBits: 128 = 128
+  }
+  sealed trait GCM192 extends GCM {
+    val gcmBits: 192 = 192
+  }
+  sealed trait GCM256 extends GCM {
+    val gcmBits: 256 = 256
+  }
+  sealed trait CBC {
+    def cbcBits: 256 | 384 | 512
+  }
+  sealed trait CBC256 extends CBC {
+    val cbcBits: 256 = 256
+  }
+  sealed trait CBC384 extends CBC  {
+    def cbcBits: 384 = 384
+  }
+  sealed trait CBC512 extends CBC  {
+    def cbcBits: 512 = 512
+  }
 
   def fromString(str: String): Either[String, ContentEncryptionAlgorithm] =
     ContentEncryptionAlgorithm.values

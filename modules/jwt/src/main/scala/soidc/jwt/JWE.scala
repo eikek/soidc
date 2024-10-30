@@ -40,4 +40,9 @@ object JWE:
       clearText: ByteVector,
       key: JWK
   )(using ByteEncoder[JoseHeader]): Either[JwtError, JWE] =
-    Encrypt.encrypt(alg, enc, clearText, key)
+    Encrypt.encrypt(JoseHeader.jwe(alg, enc), clearText, key)
+
+  def encrypt(header: JoseHeader, clearText: ByteVector, key: JWK)(using
+      ByteEncoder[JoseHeader]
+  ): Either[JwtError, JWE] =
+    Encrypt.encrypt(header, clearText, key)
