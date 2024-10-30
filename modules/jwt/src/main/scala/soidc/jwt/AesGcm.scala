@@ -1,11 +1,12 @@
 package soidc.jwt
 
 import java.security.SecureRandom
-import scodec.bits.ByteVector
-import javax.crypto.SecretKey
 import javax.crypto.Cipher
-import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
+
+import scodec.bits.ByteVector
 
 private[jwt] object AesGcm:
   final case class Result(cipherText: ByteVector, authTag: ByteVector, iv: ByteVector)
@@ -21,7 +22,7 @@ private[jwt] object AesGcm:
     ByteVector.view(bytes)
   }
 
-  def generateKey(len: 128 | 192 | 256) = {
+  def generateKey(len: 128 | 192 | 256): SecretKey = {
     val kgen = KeyGenerator.getInstance("AES")
     kgen.init(len)
     kgen.generateKey()

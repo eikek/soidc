@@ -5,7 +5,7 @@ import cats.syntax.all.*
 import cats.{Applicative, Functor, Monad}
 
 import org.http4s.*
-import soidc.core.JwtDecodingValidator.ValidateFailure
+import soidc.core.ValidateFailure
 import soidc.http4s.routes.JwtContext.*
 
 package object routes {

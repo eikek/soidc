@@ -1,18 +1,20 @@
 package soidc.jwt
 
 import scodec.bits.ByteVector
-import soidc.jwt.{ContentEncryptionAlgorithm as CEA, RegisteredParameterName as P}
+import soidc.jwt.ContentEncryptionAlgorithm as CEA
+import soidc.jwt.JwtError.DecodeError
 import soidc.jwt.codec.ByteDecoder
 
 private[jwt] object Decrypt:
 
-  def decrypt(key: JWK, jwe: JWE)(using
-      hdec: ByteDecoder[JoseHeader]
+  def decrypt[H](key: JWK, jwe: JWE)(using
+      hdec: ByteDecoder[H],
+      h: EncryptionHeader[H]
   ): Either[JwtError, ByteVector] =
     for
       header <- hdec.decode(jwe.header.decoded)
 
-      cek <- header.values.requireAs[Algorithm.Encrypt](P.Alg).flatMap {
+      cek <- h.algorithm(header).toRight(DecodeError("Missing alg parameter")).flatMap {
         case Algorithm.Encrypt.dir =>
           SymmetricKey.asAESSecretKey(key)
 
@@ -26,7 +28,7 @@ private[jwt] object Decrypt:
             .createPrivateKey(key)
             .flatMap(pk => RsaOaep.decryptCEK256(jwe.encryptedKey.decoded.toArray, pk))
       }
-      enc <- header.values.requireAs[CEA](P.Enc)
+      enc <- h.encryptionAlgorithm(header).toRight(DecodeError("Missing enc parameter"))
       out <- enc match
         case _: CEA.GCM =>
           AesGcm.decrypt(

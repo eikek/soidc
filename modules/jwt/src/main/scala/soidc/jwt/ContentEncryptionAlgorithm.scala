@@ -1,7 +1,8 @@
 package soidc.jwt
 
-import soidc.jwt.codec.{FromJson, ToJson}
+import scodec.bits.ByteVector
 import soidc.jwt.JwtError.DecodeError
+import soidc.jwt.codec.{FromJson, ToJson}
 
 /** See https://datatracker.ietf.org/doc/html/rfc7518#section-5 */
 enum ContentEncryptionAlgorithm(val bits: 128 | 192 | 256 | 384 | 512):
@@ -26,6 +27,12 @@ enum ContentEncryptionAlgorithm(val bits: 128 | 192 | 256 | 384 | 512):
 
   lazy val name: String = productPrefix.replace('-', '_')
 
+  def generateKey: ByteVector = this match
+    case a: ContentEncryptionAlgorithm.GCM =>
+      ByteVector.view(AesGcm.generateKey(a.gcmBits).getEncoded)
+    case a: ContentEncryptionAlgorithm.CBC =>
+      ByteVector.view(AesCbc.generateKey(a.cbcBits).raw.getEncoded)
+
 object ContentEncryptionAlgorithm:
   sealed trait GCM {
     def gcmBits: 128 | 192 | 256
@@ -45,10 +52,10 @@ object ContentEncryptionAlgorithm:
   sealed trait CBC256 extends CBC {
     val cbcBits: 256 = 256
   }
-  sealed trait CBC384 extends CBC  {
+  sealed trait CBC384 extends CBC {
     def cbcBits: 384 = 384
   }
-  sealed trait CBC512 extends CBC  {
+  sealed trait CBC512 extends CBC {
     def cbcBits: 512 = 512
   }
 

@@ -1,12 +1,13 @@
 package soidc.jwt
 
-import scodec.bits.ByteVector
-import java.security.PublicKey
-import javax.crypto.Cipher
 import java.security.PrivateKey
+import java.security.PublicKey
 import java.security.SecureRandom
+import javax.crypto.Cipher
 import javax.crypto.SecretKey
 import javax.crypto.spec.SecretKeySpec
+
+import scodec.bits.ByteVector
 
 private[jwt] object RsaOaep:
   private val rsaOaep = "RSA/ECB/OAEPWithSHA-256AndMGF1Padding"

@@ -1,20 +1,21 @@
 package soidc.jwt
 
 import scodec.bits.ByteVector
+import soidc.jwt.ContentEncryptionAlgorithm as CEA
+import soidc.jwt.JwtError.DecodeError
 import soidc.jwt.codec.ByteEncoder
-import soidc.jwt.{ContentEncryptionAlgorithm as CEA, RegisteredParameterName as P}
 
 private[jwt] object Encrypt:
 
-  def encrypt(
-      header: JoseHeader,
+  def encrypt[H](
+      header: H,
       clearText: ByteVector,
       key: JWK
-  )(using henc: ByteEncoder[JoseHeader]): Either[JwtError, JWE] = {
+  )(using henc: ByteEncoder[H], h: EncryptionHeader[H]): Either[JwtError, JWE] = {
     val headerEncoded = Base64String.encode(henc.encode(header))
     for
-      alg <- header.values.requireAs[Algorithm.Encrypt](P.Alg)
-      enc <- header.values.requireAs[CEA](P.Enc)
+      alg <- h.algorithm(header).toRight(DecodeError("Missing alg parameter"))
+      enc <- h.encryptionAlgorithm(header).toRight(DecodeError("Missing enc parameter"))
 
       (cek, iv) <- enc match
         case a: CEA.GCM =>

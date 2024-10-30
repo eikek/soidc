@@ -1,9 +1,10 @@
 package soidc.jwt
 
-import scodec.bits.*
-import soidc.jwt.codec.*
-import soidc.jwt.RegisteredParameterName as P
 import javax.crypto.spec.SecretKeySpec
+
+import scodec.bits.*
+import soidc.jwt.RegisteredParameterName as P
+import soidc.jwt.codec.*
 
 object Rfc7516:
 

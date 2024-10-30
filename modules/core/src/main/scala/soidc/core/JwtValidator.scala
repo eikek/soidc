@@ -90,6 +90,9 @@ trait JwtValidator[F[_], H, C]:
   def toDecodingValidator(using Applicative[F]): JwtDecodingValidator[F, H, C] =
     JwtDecodingValidator.from(this)
 
+  def toDecryptingValidator(key: JWK)(using Applicative[F]): JwtDecryptingValidator[F, H, C] =
+    JwtDecryptingValidator.from(this, key)
+
 object JwtValidator:
   type Result = Option[Validate.Result]
 

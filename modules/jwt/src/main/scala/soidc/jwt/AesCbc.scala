@@ -1,14 +1,15 @@
 package soidc.jwt
 
-import scodec.bits.ByteVector
-import java.security.SecureRandom
-import javax.crypto.SecretKey
-import javax.crypto.Cipher
-import javax.crypto.spec.SecretKeySpec
-import javax.crypto.spec.IvParameterSpec
 import java.security.InvalidKeyException
-import javax.crypto.Mac
+import java.security.SecureRandom
+import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
+import javax.crypto.Mac
+import javax.crypto.SecretKey
+import javax.crypto.spec.IvParameterSpec
+import javax.crypto.spec.SecretKeySpec
+
+import scodec.bits.ByteVector
 
 /** See https://datatracker.ietf.org/doc/html/rfc7518#section-5.2 */
 private[jwt] object AesCbc:
@@ -23,7 +24,7 @@ private[jwt] object AesCbc:
     ByteVector.view(bytes)
   }
 
-  def generateKey(len: 256 | 384 | 512) =
+  def generateKey(len: 256 | 384 | 512): CompositeKey =
     CompositeKey.generate(len)
 
   def encryptOnly(

@@ -79,3 +79,9 @@ object JoseHeader:
 
   given StandardHeaderWrite[JoseHeader] =
     StandardHeaderWrite(_.withAlgorithm(_))
+
+  given EncryptionHeader[JoseHeader] =
+    EncryptionHeader(
+      h => h.values.requireAs[Algorithm.Encrypt](P.Alg).toOption,
+      h => h.values.requireAs[ContentEncryptionAlgorithm](P.Enc).toOption
+    )

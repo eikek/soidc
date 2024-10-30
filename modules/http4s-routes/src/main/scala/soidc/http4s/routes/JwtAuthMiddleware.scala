@@ -8,9 +8,9 @@ import cats.syntax.all.*
 
 import org.http4s.*
 import org.http4s.server.AuthMiddleware
-import soidc.core.JwtDecodingValidator.ValidateFailure
 import soidc.core.JwtRefresh
 import soidc.core.JwtValidator
+import soidc.core.ValidateFailure
 import soidc.http4s.routes.JwtContext.*
 import soidc.http4s.routes.TokenRefreshMiddleware.Config as RefreshConfig
 import soidc.jwt.StandardClaimsRead

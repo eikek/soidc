@@ -1,8 +1,8 @@
 package soidc.jwt
 
 import scodec.bits.ByteVector
-import soidc.jwt.codec.ByteEncoder
 import soidc.jwt.codec.ByteDecoder
+import soidc.jwt.codec.ByteEncoder
 
 final case class JWE(
     header: Base64String,
@@ -15,8 +15,16 @@ final case class JWE(
   def compact: String =
     s"${header.value}.${encryptedKey.value}.${iv.value}.${cipherText.value}.${authTag.value}"
 
-  def decrypt(key: JWK)(using ByteDecoder[JoseHeader]): Either[JwtError, ByteVector] =
+  def decrypt[H](
+      key: JWK
+  )(using ByteDecoder[H], EncryptionHeader[H]): Either[JwtError, ByteVector] =
     Decrypt.decrypt(key, this)
+
+  def decryptSymmetric[H](key: ByteVector)(using
+      ByteDecoder[H],
+      EncryptionHeader[H]
+  ): Either[JwtError, ByteVector] =
+    decrypt[H](JWK.symmetric(key, Algorithm.Encrypt.dir))
 
 object JWE:
 
@@ -42,7 +50,16 @@ object JWE:
   )(using ByteEncoder[JoseHeader]): Either[JwtError, JWE] =
     Encrypt.encrypt(JoseHeader.jwe(alg, enc), clearText, key)
 
-  def encrypt(header: JoseHeader, clearText: ByteVector, key: JWK)(using
-      ByteEncoder[JoseHeader]
+  def encryptSymmetric(
+      key: ByteVector,
+      enc: ContentEncryptionAlgorithm,
+      clearText: ByteVector
+  )(using ByteEncoder[JoseHeader]): Either[JwtError, JWE] =
+    val jwk = JWK.symmetric(key, Algorithm.Encrypt.dir)
+    encrypt(Algorithm.Encrypt.dir, enc, clearText, jwk)
+
+  def encrypt[H](header: H, clearText: ByteVector, key: JWK)(using
+      ByteEncoder[H],
+      EncryptionHeader[H]
   ): Either[JwtError, JWE] =
     Encrypt.encrypt(header, clearText, key)
