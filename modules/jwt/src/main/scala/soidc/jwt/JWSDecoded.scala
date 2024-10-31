@@ -58,7 +58,7 @@ object JWSDecoded:
       ByteDecoder[C]
   ): Either[JwtError.DecodeError, JWSDecoded[H, C]] =
     for
-      jws <- JWS.fromString(token).left.map(JwtError.DecodeError(_))
+      jws <- JWS.fromString(token)
       h <- jws.header.as[H]
       c <- jws.claims.as[C]
     yield JWSDecoded(jws, h, c)

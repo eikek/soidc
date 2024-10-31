@@ -1,24 +1,26 @@
 package soidc.core
 
 import java.security.KeyPairGenerator
+import java.security.SecureRandom
 import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 import java.security.interfaces.RSAPrivateCrtKey
 import java.security.spec.ECGenParameterSpec
+import javax.crypto.KeyGenerator
 
 import cats.effect.*
-import cats.effect.std.SecureRandom
 import cats.syntax.all.*
 
 import scodec.bits.ByteVector
 import soidc.jwt.Algorithm
+import soidc.jwt.ContentEncryptionAlgorithm
 import soidc.jwt.Curve
 import soidc.jwt.JWK
 
 /** Functions for creating random keys. */
 object JwkGenerate:
 
-  def symmetric[F[_]: Sync](
+  def symmetricSign[F[_]: Sync](
       len: Int = 16,
       algorithm: Algorithm.Sign = Algorithm.Sign.HS256
   ): F[JWK] =
@@ -28,9 +30,20 @@ object JwkGenerate:
           new Exception(s"Invalid algorthim for symmetric key: $algorithm")
         )
       )
-      rng <- SecureRandom.javaSecuritySecureRandom[F]
-      barr <- rng.nextBytes(len)
-      key = JWK.symmetric(ByteVector.view(barr), algorithm)
+      bs <- Sync[F].delay {
+        val kgen = KeyGenerator.getInstance(algorithm.id)
+        kgen.init(len * 8, new SecureRandom)
+        kgen.generateKey().getEncoded
+      }
+      key = JWK.symmetric(ByteVector.view(bs), algorithm)
+    yield key
+
+  def symmetricEncrypt[F[_]: Sync](
+      cea: ContentEncryptionAlgorithm = ContentEncryptionAlgorithm.A256GCM
+  ): F[JWK] =
+    for
+      k <- Sync[F].delay(cea.generateKey)
+      key = JWK.symmetric(k, Algorithm.Encrypt.dir)
     yield key
 
   def rsa[F[_]: Sync](

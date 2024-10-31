@@ -28,13 +28,13 @@ object TokenResponse:
       fs(this)
 
     def accessTokenJWS: Either[JwtError.DecodeError, JWS] =
-      JWS.fromString(accessToken).left.map(JwtError.DecodeError(_))
+      JWS.fromString(accessToken)
 
     def idTokenJWS: Option[Either[JwtError.DecodeError, JWS]] =
-      idToken.map(JWS.fromString).map(_.left.map(JwtError.DecodeError(_)))
+      idToken.map(JWS.fromString)
 
     def refreshTokenJWS: Option[Either[JwtError.DecodeError, JWS]] =
-      refreshToken.map(JWS.fromString).map(_.left.map(JwtError.DecodeError(_)))
+      refreshToken.map(JWS.fromString)
   }
 
   object Success {

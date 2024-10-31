@@ -82,3 +82,40 @@ class OpenIdJwtValidatorTest extends CatsEffectSuite:
       .openId[IO, JoseHeader, SimpleClaims](cfg, client)
       .flatMap(_.validate(jws))
       .assert(_.exists(_.isValid))
+
+  test("validate encrypted jws".only):
+    val issuer = "http://issuer".uri
+    val (jws, jwk) = createJWS(SimpleClaims.empty.withIssuer(StringOrUri(issuer.value)))
+    val jwksUri = "http://jwkb".uri
+    val oidUri = "http://issuer/.well-known/openid-configuration".uri
+    val dummyUri = "dummy:none".uri
+    val client = TestHttpClient.fromMap[IO](
+      Map(
+        jwksUri -> JWKSet(jwk).toJsonValue,
+        oidUri -> OpenIdConfig(
+          dummyUri,
+          dummyUri,
+          dummyUri,
+          dummyUri,
+          jwksUri
+        ).toJsonValue
+      )
+    )
+    val cea = ContentEncryptionAlgorithm.A256GCM
+    val cfg = OpenIdJwtValidator.Config()
+    for
+      encKey <- JwkGenerate.symmetricEncrypt[IO](cea)
+      validator <- JwtValidator
+        .openId[IO, JoseHeader, SimpleClaims](cfg, client)
+        .map(_.toDecryptingValidator(encKey))
+      jwe <- IO(
+        JWE.encryptJWS(
+          JoseHeader.jwe(cea = cea, alg = Algorithm.Encrypt.dir),
+          jws.jws,
+          encKey
+        )
+      ).rethrow
+
+      res <- validator.decryptValidate(jwe.compact)
+      _ = assert(res.toEither.isRight)
+    yield ()

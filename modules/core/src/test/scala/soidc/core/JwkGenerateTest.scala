@@ -10,7 +10,7 @@ class JwkGenerateTest extends CatsEffectSuite:
   val testCases =
     Algorithm.Sign.values.toList.flatMap {
       case a if a.isHMAC =>
-        List((s"$a (len=16)", JwkGenerate.symmetric[IO](16, a)))
+        List((s"$a (len=16)", JwkGenerate.symmetricSign[IO](16, a)))
 
       case a if a.isRSA =>
         List(

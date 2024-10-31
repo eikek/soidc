@@ -57,8 +57,7 @@ object AuthCodeFlow:
       ByteDecoder[H],
       ByteDecoder[C]
   ): F[AuthCodeFlow[F, H, C]] =
-    for key <- JwkGenerate.symmetric()
-    yield new Impl(logger, acf)
+    new Impl[F, H, C](logger, acf).pure[F]
 
   private class Impl[F[_]: Sync, H, C](
       logger: Logger[F],

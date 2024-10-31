@@ -57,9 +57,9 @@ object JoseHeader:
 
   def jwe(
       alg: Algorithm.Encrypt = Algorithm.Encrypt.RSA_OAEP,
-      ce: ContentEncryptionAlgorithm = ContentEncryptionAlgorithm.A256GCM
+      cea: ContentEncryptionAlgorithm = ContentEncryptionAlgorithm.A256GCM
   ): JoseHeader =
-    empty.withAlgorithm(alg).withValue(P.Enc, ce)
+    empty.withAlgorithm(alg).withValue(P.Enc, cea)
 
   def fromObj(values: JsonValue.Obj): Either[DecodeError, JoseHeader] =
     for

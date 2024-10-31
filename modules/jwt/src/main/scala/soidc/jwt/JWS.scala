@@ -73,8 +73,8 @@ object JWS:
   ): JWS =
     signed(header, claims, key).fold(throw _, identity)
 
-  def fromString(str: String): Either[String, JWS] =
-    str.split('.') match {
+  def fromString(str: String): Either[JwtError.DecodeError, JWS] =
+    (str.split('.') match {
       case Array(h, c, s) =>
         for
           h64 <- Base64String.of(h)
@@ -88,12 +88,12 @@ object JWS:
         yield JWS(h64, c64, None)
       case _ =>
         Left(s"Invalid JWS: $str")
-    }
+    }).left.map(JwtError.DecodeError(_))
 
   def unsafeFromString(s: String): JWS =
-    fromString(s).fold(sys.error, identity)
+    fromString(s).fold(throw _, identity)
 
   given FromJson[JWS] =
-    FromJson[String].mapEither(s => fromString(s).left.map(JwtError.DecodeError(_)))
+    FromJson[String].mapEither(fromString)
   given ToJson[JWS] =
     ToJson[String].contramap(_.compact)

@@ -21,23 +21,14 @@ object JwtDecryptingValidator:
     new JwtDecryptingValidator[F, H, C] {
       def decryptValidate(
           token: String
-      )(using ByteDecoder[H], ByteDecoder[C], EncryptionHeader[H]): F[ValidateResult[H, C]] =
-        val jws =
-          for
-            jwe <- JWE
-              .fromString(token)
-              .left
-              .map(err => JwtError.DecodeError(err))
-            tokenRaw <- jwe.decrypt[H](key)
-            jws <- JWS
-              .fromString(tokenRaw.decodeUtf8Lenient)
-              .left
-              .map(err => JwtError.DecodeError(err))
-            jwsd <- jws.decode[H, C]
-          yield jwsd
-
-        jws match
-          case Left(err) => ValidateResult.Failure(ValidateFailure.DecodeFailure(err)).pure[F]
+      )(using
+          ByteDecoder[H],
+          ByteDecoder[C],
+          EncryptionHeader[H]
+      ): F[ValidateResult[H, C]] =
+        JWE.decryptStringToJWS[H, C](token, key) match
+          case Left(err) =>
+            ValidateResult.Failure(ValidateFailure.DecodeFailure(err)).pure[F]
           case Right(jwt) =>
             validator.validate(jwt).map {
               case None => ValidateResult.Failure(ValidateFailure.Unhandled)

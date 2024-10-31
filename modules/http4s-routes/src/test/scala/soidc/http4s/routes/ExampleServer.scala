@@ -32,7 +32,7 @@ object ExampleServer extends IOApp:
 
   // local users
   val localFlow: IO[LocalUserFlow] =
-    JwkGenerate.symmetric[IO](16).map { key =>
+    JwkGenerate.symmetricSign[IO](16).map { key =>
       LocalFlow[IO, JoseHeader, SimpleClaims](
         LocalFlow.Config(
           issuer = StringOrUri("example-app-local"),
@@ -49,7 +49,7 @@ object ExampleServer extends IOApp:
     val cfg = (
       OptionT(env.get("GITHUB_CLIENT_ID")).map(ClientId.apply),
       OptionT(env.get("GITHUB_CLIENT_SECRET")).map(ClientSecret.apply),
-      OptionT.liftF(JwkGenerate.symmetric[IO](16))
+      OptionT.liftF(JwkGenerate.symmetricSign[IO](16))
     ).mapN((cid, cs, key) => GitHubOAuth.Config(cid, key, cs.some))
     cfg
       .map(GitHubOAuth(_, Http4sClient(client), logger))
@@ -63,7 +63,7 @@ object ExampleServer extends IOApp:
       tokenStore: TokenStore[IO, JoseHeader, SimpleClaims]
   ): IO[OpenIdFlow] =
     for
-      key <- JwkGenerate.symmetric[IO](16)
+      key <- JwkGenerate.symmetricSign[IO](16)
       acfCfg = ACF.Config(
         ClientId("example"),
         ClientSecret("8CCr3yFDuMl3L0MgNSICXgELvuabi5si").some,
