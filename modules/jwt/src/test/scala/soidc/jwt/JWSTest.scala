@@ -161,7 +161,8 @@ class JWSTest extends FunSuite with Syntax:
     assert(jws.verifySignature(pk).value)
 
   test("imported ec key".only):
-    val jwk = JWK.ecKeyPair(KeyData.ecPrivate, KeyData.ecPublic, Algorithm.Sign.ES256).value
+    val jwk =
+      JWK.ecKeyPair(KeyData.ecPrivate, KeyData.ecPublic, Algorithm.Sign.ES256).value
     val jws = JWS(
       // {"typ":"JWT","alg":"ES256"}
       Base64String.unsafeOf("eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9"),

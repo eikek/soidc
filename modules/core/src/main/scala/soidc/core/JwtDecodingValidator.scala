@@ -22,7 +22,8 @@ object JwtDecodingValidator:
           token: String
       )(using ByteDecoder[H], ByteDecoder[C]): F[ValidateResult[H, C]] =
         JWSDecoded.fromString[H, C](token) match
-          case Left(err) => ValidateResult.Failure(ValidateFailure.DecodeFailure(err)).pure[F]
+          case Left(err) =>
+            ValidateResult.Failure(ValidateFailure.DecodeFailure(err)).pure[F]
           case Right(jwt) =>
             validator.validate(jwt).map {
               case None => ValidateResult.Failure(ValidateFailure.Unhandled)
