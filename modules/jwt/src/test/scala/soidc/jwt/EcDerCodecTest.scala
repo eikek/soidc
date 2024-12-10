@@ -71,7 +71,7 @@ class EcDerCodecTest extends FunSuite with Syntax:
       case Algorithm.Sign.ES256 => "SHA256withECDSA"
       case Algorithm.Sign.ES384 => "SHA384withECDSA"
       case Algorithm.Sign.ES512 => "SHA512withECDSA"
-      case _               => throw JwtError.UnsupportedSignatureAlgorithm(alg)
+      case _                    => throw JwtError.UnsupportedSignatureAlgorithm(alg)
 
   extension (self: Curve)
     def expectedSignatureLength = self match

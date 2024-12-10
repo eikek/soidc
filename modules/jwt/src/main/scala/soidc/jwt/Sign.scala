@@ -36,7 +36,10 @@ object Sign:
   private def signAsymmetric(
       key: JWK,
       payload: Array[Byte],
-      algoName: Algorithm => Either[JwtError.UnsupportedSignatureAlgorithm, Algorithm.Sign]
+      algoName: Algorithm => Either[
+        JwtError.UnsupportedSignatureAlgorithm,
+        Algorithm.Sign
+      ]
   ): Either[JwtError.SignError, ByteVector] =
     for
       alg <- key.algorithm.toRight(JwtError.AlgorithmMissing(key))
