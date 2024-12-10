@@ -100,7 +100,7 @@ object JwtAuth:
     ): Builder[F, H, C] =
       withValidator(f(validator))
 
-    def withDecryption(key: JWK)(using EncryptionHeader[H]): Builder[F,H,C] =
+    def withDecryption(key: JWK)(using EncryptionHeader[H]): Builder[F, H, C] =
       copy(decryptSettings = DecryptSettings.of(key).some)
   }
 

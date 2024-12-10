@@ -11,7 +11,7 @@ import scodec.bits.ByteVector
 
 private[jwt] object RsaOaep:
   private val rsaOaep = "RSA/ECB/OAEPWithSHA-256AndMGF1Padding"
-  private val rsaOaep1= "RSA/ECB/OAEPWithSHA1AndMGF1Padding"
+  private val rsaOaep1 = "RSA/ECB/OAEPWithSHA1AndMGF1Padding"
 
   def encryptCEK1(cek: SecretKey, pk: PublicKey): Either[JwtError, ByteVector] =
     encryptCEK(cek, pk, rsaOaep1)
@@ -25,14 +25,22 @@ private[jwt] object RsaOaep:
   def decryptCEK256(data: Array[Byte], pk: PrivateKey): Either[JwtError, SecretKeySpec] =
     decryptCEK(data, pk, rsaOaep)
 
-  private def encryptCEK(cek: SecretKey, pk: PublicKey, alg: String): Either[JwtError, ByteVector] =
+  private def encryptCEK(
+      cek: SecretKey,
+      pk: PublicKey,
+      alg: String
+  ): Either[JwtError, ByteVector] =
     wrapSecurityApi {
       val cipher = Cipher.getInstance(alg)
       cipher.init(Cipher.ENCRYPT_MODE, pk, new SecureRandom)
       ByteVector.view(cipher.doFinal(cek.getEncoded()))
     }
 
-  private def decryptCEK(data: Array[Byte], pk: PrivateKey, alg: String): Either[JwtError, SecretKeySpec] =
+  private def decryptCEK(
+      data: Array[Byte],
+      pk: PrivateKey,
+      alg: String
+  ): Either[JwtError, SecretKeySpec] =
     wrapSecurityApi {
       val cipher = Cipher.getInstance(alg)
       cipher.init(Cipher.DECRYPT_MODE, pk)
