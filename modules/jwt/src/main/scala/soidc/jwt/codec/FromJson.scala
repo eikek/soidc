@@ -75,7 +75,7 @@ object FromJson:
       case JsonValue.JsonNull      => Right(None)
       case JsonValue.Arr(Nil)      => Right(None)
       case JsonValue.Arr(h :: Nil) => f.from(h).map(Some(_))
-      case v => f.from(v).map(Some(_))
+      case v                       => f.from(v).map(Some(_))
     }
 
   trait Syntax {

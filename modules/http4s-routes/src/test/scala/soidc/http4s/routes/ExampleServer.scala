@@ -178,7 +178,8 @@ object ExampleServer extends IOApp:
         case Some(c) =>
           val name = c.values
             .getAs[String](OidParameterNames.PreferredUsername)
-            .toOption.flatten
+            .toOption
+            .flatten
             .orElse(c.subject.map(_.value))
           Ok(
             s"hello $name!! You have time until ${c.expirationTime.map(_.asInstant)}"
