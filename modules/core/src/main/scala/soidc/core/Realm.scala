@@ -16,8 +16,7 @@ trait Realm[F[_], H, C]:
   /** Check whether the given JWT was issued by this provider. */
   def isIssuer(jws: JWSDecoded[H, C])(using StandardClaims[C]): Boolean
 
-  /** Combine this and `next` realm by combining their validator and jwtRefresh instances.
-    */
+  /** Combine this and `next` realm by combining their validator and jwtRefresh instances. */
   def or(next: Realm[F, H, C])(using Monad[F]): Realm[F, H, C] =
     Realm.combine(this, next)
 

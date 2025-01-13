@@ -11,8 +11,7 @@ import soidc.jwt.*
 import soidc.jwt.codec.ByteDecoder
 
 trait AuthorizationCodeFlow[F[_], H, C] extends Realm[F, H, C]:
-  /** Creates the authorization uri for redirecting the user agent to the auth provider.
-    */
+  /** Creates the authorization uri for redirecting the user agent to the auth provider. */
   def authorizeUrl(redirectUri: Uri): F[Uri]
 
   /** Creates the logout uri for redirecting the user-agent to logout the user. This might
