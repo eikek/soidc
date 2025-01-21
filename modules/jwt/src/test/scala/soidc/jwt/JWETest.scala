@@ -2,7 +2,6 @@ package soidc.jwt
 
 import munit.*
 import RegisteredParameterName as P
-import scodec.bits.ByteVector
 
 class JWETest extends FunSuite with Syntax:
   val data = Rfc7516.AppendixA

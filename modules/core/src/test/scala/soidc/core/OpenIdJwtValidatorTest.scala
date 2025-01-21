@@ -5,7 +5,6 @@ import cats.effect.*
 import munit.CatsEffectSuite
 import soidc.borer.given
 import soidc.jwt.*
-import soidc.jwt.codec.JsonValue
 import soidc.jwt.codec.syntax.*
 
 class OpenIdJwtValidatorTest extends CatsEffectSuite:
