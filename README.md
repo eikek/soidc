@@ -11,7 +11,8 @@ support to your projects.
 The `jwt` module is the center of this library. It only has one
 (small) dependency to `scodec-bits`. It provides creating and
 validating [JWT](https://datatracker.ietf.org/doc/html/rfc7519)s in
-form of a [JWS](https://datatracker.ietf.org/doc/html/rfc7515).
+form of a [JWS](https://datatracker.ietf.org/doc/html/rfc7515) and
+[JWE](https://datatracker.ietf.org/doc/html/rfc7516).
 
 The header and claims structure are abstract and users need to provide
 an implementation of `StandardHeader` and `StandardClaims`,
@@ -36,8 +37,8 @@ for verifying the public key. Supported algorithms are:
 ```scala
 import soidc.jwt.*
 
-Algorithm.values.toList
-// res0: List[Algorithm] = List(
+Algorithm.Sign.values.toList
+// res0: List[Sign] = List(
 //   HS256,
 //   HS384,
 //   HS512,
@@ -49,6 +50,27 @@ Algorithm.values.toList
 //   ES512
 // )
 ```
+
+When using a JWE, supported algorithms for key and content encryption are:
+```scala
+import soidc.jwt.*
+
+// key encryption
+Algorithm.Encrypt.values.toList
+// res1: List[Encrypt] = List(RSA_OAEP, RSA_OAEP_256, dir)
+
+// content encryption
+ContentEncryptionAlgorithm.values.toList
+// res2: List[ContentEncryptionAlgorithm] = List(
+//   A128GCM,
+//   A192GCM,
+//   A256GCM,
+//   A128CBC_HS256,
+//   A192CBC_HS384,
+//   A256CBC_HS512
+// )
+```
+
 
 A JWK can be created from a pkcs8 string or its JSON representation.
 
@@ -78,7 +100,7 @@ val jws = JWS.unsafeFromString(token)
 //   claims = "eyJpc3MiOiJqb2UiLA0KICJleHAiOjEzMDA4MTkzODAsDQogImh0dHA6Ly9leGFtcGxlLmNvbS9pc19yb290Ijp0cnVlfQ",
 //   signature = Some(value = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk")
 // )
-val jwk = JWK.symmetric(secret, Algorithm.HS256)
+val jwk = JWK.symmetric(secret, Algorithm.Sign.HS256)
 // jwk: JWK = JWK(
 //   keyType = OCT,
 //   keyUse = None,
@@ -97,7 +119,7 @@ val jwk = JWK.symmetric(secret, Algorithm.HS256)
 
 // verify signature
 jws.verifySignature(jwk)
-// res2: Either[VerifyError, Boolean] = Right(value = true)
+// res4: Either[VerifyError, Boolean] = Right(value = true)
 ```
 
 #### Example: Creating a signed JWT
@@ -114,7 +136,7 @@ val unsignedJws = JWS(
 //   claims = "eyJpc3MiOiJteXNlbGYifQ",
 //   signature = None
 // )
-val jwk = JWK.symmetric(Base64String.unsafeOf("dmVyeS1zZWNyZXQ"), Algorithm.HS256)
+val jwk = JWK.symmetric(Base64String.unsafeOf("dmVyeS1zZWNyZXQ"), Algorithm.Sign.HS256)
 // jwk: JWK = JWK(
 //   keyType = OCT,
 //   keyUse = None,
@@ -135,7 +157,7 @@ val Right(signedJws) = unsignedJws.signWith(jwk)
 //   signature = Some(value = "RISqPbLCm9YWIBEC90ZhoXZHuoem4_WM9T5_8NJAiwc")
 // )
 signedJws.verifySignature(jwk)
-// res4: Either[VerifyError, Boolean] = Right(value = true)
+// res6: Either[VerifyError, Boolean] = Right(value = true)
 ```
 
 #### Example: Validating a JWT
@@ -156,7 +178,7 @@ val token = List(
   "-5CpNDe2NCAZfAYYCBgiHvZzFDNGpIX2pUmgJhfLqgA"
 ).mkString(".")
 // token: String = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE2MDAwMTAwMDAsIm5iZiI6MTYwMDAwMDAwMH0.-5CpNDe2NCAZfAYYCBgiHvZzFDNGpIX2pUmgJhfLqgA"
-val jwk = JWK.symmetric(Base64String.unsafeOf("dmVyeS1zZWNyZXQ"), Algorithm.HS256)
+val jwk = JWK.symmetric(Base64String.unsafeOf("dmVyeS1zZWNyZXQ"), Algorithm.Sign.HS256)
 // jwk: JWK = JWK(
 //   keyType = OCT,
 //   keyUse = None,
@@ -210,12 +232,12 @@ val jwt = JWSDecoded.unsafeFromString[JoseHeader, SimpleClaims](token)
 val currentTime = java.time.Instant.ofEpochSecond(1600000500)
 // currentTime: Instant = 2020-09-13T12:35:00Z
 jwt.validate(jwk, currentTime).isValid
-// res6: Boolean = true
+// res8: Boolean = true
 
 val tooLate = java.time.Instant.ofEpochSecond(1603000500)
 // tooLate: Instant = 2020-10-18T05:55:00Z
 jwt.validate(jwk, tooLate).isValid
-// res7: Boolean = false
+// res9: Boolean = false
 ```
 
 ### core
@@ -259,7 +281,7 @@ import cats.effect.*
 import cats.effect.unsafe.implicits.*
 
 def createJWS(claims: SimpleClaims, kid: String = "key1"): (DefaultJWS, JWK) =
-  val alg = Algorithm.HS256
+  val alg = Algorithm.Sign.HS256
   val jwk = JWK.symmetric(Base64String.encodeString("hello"), alg).withKeyId(kid.keyId)
   val jws = JWSDecoded.createSigned(
     JoseHeader.jwt.withAlgorithm(alg).withKeyId(kid.keyId),
@@ -307,10 +329,10 @@ val validator = JwtValidator
   .openId[IO, JoseHeader, SimpleClaims](cfg, client)
   .map(_.forIssuer(_.startsWith("http://issuer"))) // restrict this to the a known issuer
   .unsafeRunSync()
-// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.JwtValidator$$anon$1@4a9d65c4
+// validator: JwtValidator[[A >: Nothing <: Any] =>> IO[A], JoseHeader, SimpleClaims] = soidc.core.JwtValidator$$anon$1@1b6a99e5
 
 validator.validate(jws).unsafeRunSync() == Some(Validate.Result.success)
-// res9: Boolean = true
+// res11: Boolean = true
 
 val (otherJws, _) = createJWS(SimpleClaims.empty.withIssuer(StringOrUri("http://other")))
 // otherJws: JWSDecoded[JoseHeader, SimpleClaims] = JWSDecoded(
@@ -345,7 +367,7 @@ val (otherJws, _) = createJWS(SimpleClaims.empty.withIssuer(StringOrUri("http://
 //   )
 // )
 validator.validate(otherJws).unsafeRunSync() == None
-// res10: Boolean = true
+// res12: Boolean = true
 ```
 
 #### AuthorizationCodeFlow
@@ -402,11 +424,11 @@ val flow = Http4sClient.default[IO].map(c => DeviceCodeFlow[IO](config, c))
 //   source = Bind(
 //     source = Bind(
 //       source = Eval(fa = Pure(value = ())),
-//       fs = org.http4s.ember.client.EmberClientBuilder$$Lambda$3677/0x0000000801ab2700@1ba9cad6
+//       fs = org.http4s.ember.client.EmberClientBuilder$$Lambda$3729/0x00007fe908abe7a8@28b8ef94
 //     ),
-//     fs = cats.effect.kernel.Resource$$Lambda$3679/0x0000000801ab3938@beda9e9
+//     fs = cats.effect.kernel.Resource$$Lambda$3731/0x00007fe908abf9e8@46e9effd
 //   ),
-//   fs = cats.effect.kernel.Resource$$Lambda$3679/0x0000000801ab3938@68591581
+//   fs = cats.effect.kernel.Resource$$Lambda$3731/0x00007fe908abf9e8@1953d8e4
 // )
 flow.use { f =>
   f.run(req, onPending).flatMap {
@@ -421,9 +443,9 @@ flow.use { f =>
       yield ()
   }
 }
-// res12: IO[Unit] = FlatMap(
+// res14: IO[Unit] = FlatMap(
 //   ioe = Pure(value = ()),
-//   f = cats.effect.kernel.Resource$$Lambda$3683/0x0000000801ab4df8@72cbd1c5,
+//   f = cats.effect.kernel.Resource$$Lambda$3735/0x00007fe908ac0ef0@7a0dfef,
 //   event = cats.effect.tracing.TracingEvent$StackTrace
 // )
 ```
@@ -505,7 +527,7 @@ val res1 = httpApp.run(badReq).unsafeRunSync()
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@140baf33
+//    = org.typelevel.vault.Vault@54367e3e
 // )
 val res2 = httpApp.run(goodReq).unsafeRunSync()
 // res2: Response[[A >: Nothing <: Any] =>> IO[A]] = (
@@ -513,7 +535,7 @@ val res2 = httpApp.run(goodReq).unsafeRunSync()
 //    = HttpVersion(major = 1, minor = 1),
 //    = Headers(Content-Type: text/plain; charset=UTF-8, Content-Length: 2),
 //    = Stream(..),
-//    = org.typelevel.vault.Vault@1a7b43a1
+//    = org.typelevel.vault.Vault@3a35fbda
 // )
 ```
 
@@ -532,6 +554,7 @@ Just a list of related RFCs for reference:
   - https://openid.net/specs/openid-connect-basic-1_0.html
   - https://openid.net/specs/openid-connect-rpinitiated-1_0.html
 - JWS https://datatracker.ietf.org/doc/html/rfc7515
+- JWE https://datatracker.ietf.org/doc/html/rfc7516
 - JWK https://datatracker.ietf.org/doc/html/rfc7517
 - JWA https://datatracker.ietf.org/doc/html/rfc7518
 - JWT https://datatracker.ietf.org/doc/html/rfc7519

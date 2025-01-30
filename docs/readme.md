@@ -11,7 +11,8 @@ support to your projects.
 The `jwt` module is the center of this library. It only has one
 (small) dependency to `scodec-bits`. It provides creating and
 validating [JWT](https://datatracker.ietf.org/doc/html/rfc7519)s in
-form of a [JWS](https://datatracker.ietf.org/doc/html/rfc7515).
+form of a [JWS](https://datatracker.ietf.org/doc/html/rfc7515) and
+[JWE](https://datatracker.ietf.org/doc/html/rfc7516).
 
 The header and claims structure are abstract and users need to provide
 an implementation of `StandardHeader` and `StandardClaims`,
@@ -36,8 +37,20 @@ for verifying the public key. Supported algorithms are:
 ```scala mdoc
 import soidc.jwt.*
 
-Algorithm.values.toList
+Algorithm.Sign.values.toList
 ```
+
+When using a JWE, supported algorithms for key and content encryption are:
+```scala mdoc
+import soidc.jwt.*
+
+// key encryption
+Algorithm.Encrypt.values.toList
+
+// content encryption
+ContentEncryptionAlgorithm.values.toList
+```
+
 
 A JWK can be created from a pkcs8 string or its JSON representation.
 
@@ -60,7 +73,7 @@ val secret = Base64String.unsafeOf("AyM1SysPpbyDfgZld3umj1qzKObwVMkoqQ-EstJQLr_T
 
 // create a JWS and a JWK
 val jws = JWS.unsafeFromString(token)
-val jwk = JWK.symmetric(secret, Algorithm.HS256)
+val jwk = JWK.symmetric(secret, Algorithm.Sign.HS256)
 
 // verify signature
 jws.verifySignature(jwk)
@@ -75,7 +88,7 @@ val unsignedJws = JWS(
   Base64String.encodeString("""{"alg":"HS256"}"""),
   Base64String.encodeString("""{"iss":"myself"}""")
 )
-val jwk = JWK.symmetric(Base64String.unsafeOf("dmVyeS1zZWNyZXQ"), Algorithm.HS256)
+val jwk = JWK.symmetric(Base64String.unsafeOf("dmVyeS1zZWNyZXQ"), Algorithm.Sign.HS256)
 val Right(signedJws) = unsignedJws.signWith(jwk)
 signedJws.verifySignature(jwk)
 ```
@@ -97,7 +110,7 @@ val token = List(
   "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE2MDAwMTAwMDAsIm5iZiI6MTYwMDAwMDAwMH0",
   "-5CpNDe2NCAZfAYYCBgiHvZzFDNGpIX2pUmgJhfLqgA"
 ).mkString(".")
-val jwk = JWK.symmetric(Base64String.unsafeOf("dmVyeS1zZWNyZXQ"), Algorithm.HS256)
+val jwk = JWK.symmetric(Base64String.unsafeOf("dmVyeS1zZWNyZXQ"), Algorithm.Sign.HS256)
 val jwt = JWSDecoded.unsafeFromString[JoseHeader, SimpleClaims](token)
 
 val currentTime = java.time.Instant.ofEpochSecond(1600000500)
@@ -148,7 +161,7 @@ import cats.effect.*
 import cats.effect.unsafe.implicits.*
 
 def createJWS(claims: SimpleClaims, kid: String = "key1"): (DefaultJWS, JWK) =
-  val alg = Algorithm.HS256
+  val alg = Algorithm.Sign.HS256
   val jwk = JWK.symmetric(Base64String.encodeString("hello"), alg).withKeyId(kid.keyId)
   val jws = JWSDecoded.createSigned(
     JoseHeader.jwt.withAlgorithm(alg).withKeyId(kid.keyId),
