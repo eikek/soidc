@@ -10,11 +10,12 @@ import cats.data.Kleisli
 import cats.effect.*
 import cats.syntax.all.*
 
-import org.http4s.Response
-import org.http4s.Uri
 import soidc.core.JwtRefresh
 import soidc.jwt.JWSDecoded
 import soidc.jwt.StandardClaimsRead
+
+import org.http4s.Response
+import org.http4s.Uri
 
 /** Refreshes an existing token if it gets near expiry. */
 object TokenRefreshMiddleware:

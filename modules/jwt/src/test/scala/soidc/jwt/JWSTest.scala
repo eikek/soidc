@@ -1,11 +1,12 @@
 package soidc.jwt
 
+import soidc.jwt.JwtError.DecodeError
+import soidc.jwt.codec.ByteDecoder
+
 import munit.*
 import pdi.jwt.JwtAlgorithm
 import pdi.jwt.JwtUtils
 import scodec.bits.{ByteVector, hex}
-import soidc.jwt.JwtError.DecodeError
-import soidc.jwt.codec.ByteDecoder
 
 class JWSTest extends FunSuite with Syntax:
 

@@ -1,8 +1,9 @@
 package soidc.jwt
 
-import scodec.bits.ByteVector
 import soidc.jwt.JwtError.DecodeError
 import soidc.jwt.codec.{FromJson, ToJson}
+
+import scodec.bits.ByteVector
 
 /** See https://datatracker.ietf.org/doc/html/rfc7518#section-5 */
 enum ContentEncryptionAlgorithm(val bits: 128 | 192 | 256 | 384 | 512):

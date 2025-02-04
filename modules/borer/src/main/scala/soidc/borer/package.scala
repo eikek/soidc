@@ -1,11 +1,12 @@
 package soidc
 
+import soidc.jwt.JwtError
+import soidc.jwt.codec.{ByteDecoder, ByteEncoder}
+
 import io.bullet.borer.Json
 import io.bullet.borer.compat.scodec.*
 import io.bullet.borer.{Decoder, Encoder}
 import scodec.bits.ByteVector
-import soidc.jwt.JwtError
-import soidc.jwt.codec.{ByteDecoder, ByteEncoder}
 
 package object borer extends BorerJsonCodec {
 

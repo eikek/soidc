@@ -14,9 +14,10 @@ import java.security.spec.ECPublicKeySpec
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
 
+import soidc.jwt.JwtError.DecodeError
+
 import scodec.bits.Bases.Alphabets
 import scodec.bits.ByteVector
-import soidc.jwt.JwtError.DecodeError
 
 private object EcKey:
 

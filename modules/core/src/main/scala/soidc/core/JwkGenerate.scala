@@ -11,11 +11,12 @@ import javax.crypto.KeyGenerator
 import cats.effect.*
 import cats.syntax.all.*
 
-import scodec.bits.ByteVector
 import soidc.jwt.Algorithm
 import soidc.jwt.ContentEncryptionAlgorithm
 import soidc.jwt.Curve
 import soidc.jwt.JWK
+
+import scodec.bits.ByteVector
 
 /** Functions for creating random keys. */
 object JwkGenerate:

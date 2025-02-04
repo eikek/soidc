@@ -2,10 +2,11 @@ package soidc.core
 
 import cats.effect.*
 
-import munit.CatsEffectSuite
 import soidc.borer.given
 import soidc.jwt.*
 import soidc.jwt.codec.syntax.*
+
+import munit.CatsEffectSuite
 
 class OpenIdJwtValidatorTest extends CatsEffectSuite:
 

@@ -3,12 +3,13 @@ package soidc.http4s.routes
 import cats.effect.*
 import cats.syntax.all.*
 
-import org.http4s.*
-import org.http4s.dsl.Http4sDsl
-import org.http4s.headers.Location
 import soidc.core.model.*
 import soidc.core.{AuthorizationCodeFlow as ACF, *}
 import soidc.jwt.JwtError
+
+import org.http4s.*
+import org.http4s.dsl.Http4sDsl
+import org.http4s.headers.Location
 
 trait GitHubFlow[F[_]]:
   def routes(mountUri: Uri)(

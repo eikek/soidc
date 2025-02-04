@@ -7,10 +7,11 @@ import java.security.interfaces.ECPublicKey
 import java.security.interfaces.RSAPrivateCrtKey
 import javax.crypto.spec.SecretKeySpec
 
-import scodec.bits.ByteVector
 import soidc.jwt.JwtError.DecodeError
 import soidc.jwt.RegisteredParameterName as P
 import soidc.jwt.codec.*
+
+import scodec.bits.ByteVector
 
 final case class JWK(
     keyType: KeyType,

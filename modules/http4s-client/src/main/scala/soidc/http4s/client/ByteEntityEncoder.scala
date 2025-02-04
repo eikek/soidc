@@ -2,9 +2,10 @@ package soidc.http4s.client
 
 import fs2.Chunk
 
+import soidc.jwt.codec.ByteEncoder
+
 import org.http4s.*
 import org.http4s.headers.`Content-Type`
-import soidc.jwt.codec.ByteEncoder
 
 trait ByteEntityEncoder:
 

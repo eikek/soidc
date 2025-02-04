@@ -2,16 +2,17 @@ package soidc.http4s.routes
 
 import cats.effect.*
 
-import munit.*
-import org.http4s.*
-import org.http4s.dsl.io.*
-import org.http4s.headers.Authorization
-import org.http4s.implicits.*
 import soidc.borer.given
 import soidc.core.JwtValidator
 import soidc.core.ValidateFailure
 import soidc.http4s.routes.JwtContext.*
 import soidc.jwt.*
+
+import munit.*
+import org.http4s.*
+import org.http4s.dsl.io.*
+import org.http4s.headers.Authorization
+import org.http4s.implicits.*
 
 class AuthenticatedRoutesTest extends CatsEffectSuite:
 

@@ -4,9 +4,10 @@ import cats.data.EitherT
 import cats.effect.*
 import cats.syntax.all.*
 
+import soidc.jwt.codec.ByteDecoder
+
 import org.http4s.*
 import scodec.bits.ByteVector
-import soidc.jwt.codec.ByteDecoder
 
 trait ByteEntityDecoder:
   def decodeFrom[F[_]: Sync, A: ByteDecoder](ct: MediaType): EntityDecoder[F, A] =

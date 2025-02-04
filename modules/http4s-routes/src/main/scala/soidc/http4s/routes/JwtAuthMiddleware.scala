@@ -6,8 +6,6 @@ import cats.data.OptionT
 import cats.effect.*
 import cats.syntax.all.*
 
-import org.http4s.*
-import org.http4s.server.AuthMiddleware
 import soidc.core.JwtRefresh
 import soidc.core.JwtValidator
 import soidc.core.ValidateFailure
@@ -15,6 +13,9 @@ import soidc.http4s.routes.JwtContext.*
 import soidc.http4s.routes.TokenRefreshMiddleware.Config as RefreshConfig
 import soidc.jwt.StandardClaimsRead
 import soidc.jwt.codec.ByteDecoder
+
+import org.http4s.*
+import org.http4s.server.AuthMiddleware
 
 /** Creates [[org.http4s.server.AuthMiddleware]]s */
 object JwtAuthMiddleware:

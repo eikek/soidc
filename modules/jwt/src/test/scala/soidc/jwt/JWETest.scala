@@ -1,7 +1,8 @@
 package soidc.jwt
 
+import soidc.jwt.RegisteredParameterName as P
+
 import munit.*
-import RegisteredParameterName as P
 
 class JWETest extends FunSuite with Syntax:
   val data = Rfc7516.AppendixA

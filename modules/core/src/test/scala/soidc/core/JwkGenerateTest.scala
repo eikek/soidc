@@ -2,8 +2,9 @@ package soidc.core
 
 import cats.effect.*
 
-import munit.CatsEffectSuite
 import soidc.jwt.*
+
+import munit.CatsEffectSuite
 
 class JwkGenerateTest extends CatsEffectSuite:
 

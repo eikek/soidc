@@ -1,9 +1,10 @@
 package soidc.jwt
 
-import scodec.bits.ByteVector
 import soidc.jwt.ContentEncryptionAlgorithm as CEA
 import soidc.jwt.JwtError.DecodeError
 import soidc.jwt.codec.ByteDecoder
+
+import scodec.bits.ByteVector
 
 private[jwt] object Decrypt:
 

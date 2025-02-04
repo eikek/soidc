@@ -1,10 +1,11 @@
 package soidc.jwt
 
-import scodec.bits.Bases.Alphabets
-import scodec.bits.ByteVector
 import soidc.jwt.JwtError.DecodeError
 import soidc.jwt.codec.ByteDecoder
 import soidc.jwt.codec.{FromJson, ToJson}
+
+import scodec.bits.Bases.Alphabets
+import scodec.bits.ByteVector
 
 opaque type Base64String = String
 
