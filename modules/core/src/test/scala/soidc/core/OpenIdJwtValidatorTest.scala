@@ -2,10 +2,11 @@ package soidc.core
 
 import cats.effect.*
 
-import munit.CatsEffectSuite
 import soidc.borer.given
 import soidc.jwt.*
 import soidc.jwt.codec.syntax.*
+
+import munit.CatsEffectSuite
 
 class OpenIdJwtValidatorTest extends CatsEffectSuite:
 
@@ -82,7 +83,7 @@ class OpenIdJwtValidatorTest extends CatsEffectSuite:
       .flatMap(_.validate(jws))
       .assert(_.exists(_.isValid))
 
-  test("validate encrypted jws".only):
+  test("validate encrypted jws"):
     val issuer = "http://issuer".uri
     val (jws, jwk) = createJWS(SimpleClaims.empty.withIssuer(StringOrUri(issuer.value)))
     val jwksUri = "http://jwkb".uri

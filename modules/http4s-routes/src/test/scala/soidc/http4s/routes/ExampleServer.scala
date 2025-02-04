@@ -7,6 +7,13 @@ import cats.effect.*
 import cats.effect.std.Console
 import cats.syntax.all.*
 
+import soidc.borer.given
+import soidc.core.model.*
+import soidc.core.{AuthorizationCodeFlow as ACF, *}
+import soidc.http4s.client.ByteEntityDecoder.given
+import soidc.http4s.client.Http4sClient
+import soidc.jwt.{Uri as _, *}
+
 import com.comcast.ip4s.*
 import org.http4s.*
 import org.http4s.client.Client
@@ -15,12 +22,6 @@ import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.implicits.*
 import org.http4s.server.Router
-import soidc.borer.given
-import soidc.core.model.*
-import soidc.core.{AuthorizationCodeFlow as ACF, *}
-import soidc.http4s.client.ByteEntityDecoder.given
-import soidc.http4s.client.Http4sClient
-import soidc.jwt.{Uri as _, *}
 
 object ExampleServer extends IOApp:
   // fixing types

@@ -1,9 +1,10 @@
 package soidc.borer
 
-import munit.FunSuite
-import scodec.bits.ByteVector
 import soidc.borer.given
 import soidc.jwt.*
+
+import munit.FunSuite
+import scodec.bits.ByteVector
 
 class JWETest extends FunSuite with Syntax:
   val data = Rfc7516.AppendixA

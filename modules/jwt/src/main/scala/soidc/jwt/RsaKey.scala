@@ -11,9 +11,10 @@ import java.security.{PrivateKey, PublicKey}
 
 import scala.util.Try
 
+import soidc.jwt.JwtError.DecodeError
+
 import scodec.bits.Bases.Alphabets
 import scodec.bits.ByteVector
-import soidc.jwt.JwtError.DecodeError
 
 private[jwt] object RsaKey:
 

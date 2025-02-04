@@ -1,11 +1,12 @@
 package soidc.jwt
 
+import soidc.jwt.JwtError.DecodeError
+import soidc.jwt.codec.ByteDecoder
+
 import munit.*
 import pdi.jwt.JwtAlgorithm
 import pdi.jwt.JwtUtils
 import scodec.bits.{ByteVector, hex}
-import soidc.jwt.JwtError.DecodeError
-import soidc.jwt.codec.ByteDecoder
 
 class JWSTest extends FunSuite with Syntax:
 
@@ -160,7 +161,7 @@ class JWSTest extends FunSuite with Syntax:
     val pk = JWK.rsaKey(KeyData.rsaPub, Algorithm.Sign.RS256).value
     assert(jws.verifySignature(pk).value)
 
-  test("imported ec key".only):
+  test("imported ec key"):
     val jwk =
       JWK.ecKeyPair(KeyData.ecPrivate, KeyData.ecPublic, Algorithm.Sign.ES256).value
     val jws = JWS(

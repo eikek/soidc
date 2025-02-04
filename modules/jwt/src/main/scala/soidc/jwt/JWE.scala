@@ -2,9 +2,10 @@ package soidc.jwt
 
 import java.nio.charset.StandardCharsets
 
-import scodec.bits.ByteVector
 import soidc.jwt.codec.ByteDecoder
 import soidc.jwt.codec.ByteEncoder
+
+import scodec.bits.ByteVector
 
 final case class JWE(
     header: Base64String,

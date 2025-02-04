@@ -2,9 +2,10 @@ package soidc.borer
 
 import scala.collection.immutable.ListMap
 
-import io.bullet.borer.*
 import soidc.jwt.*
 import soidc.jwt.codec.*
+
+import io.bullet.borer.*
 
 trait BorerJsonCodec:
 

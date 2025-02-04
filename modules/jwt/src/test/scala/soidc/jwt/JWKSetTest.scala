@@ -1,8 +1,9 @@
 package soidc.jwt
 
-import munit.FunSuite
 import soidc.jwt.codec.JsonValue
 import soidc.jwt.codec.syntax.*
+
+import munit.FunSuite
 
 class JWKSetTest extends FunSuite:
 

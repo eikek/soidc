@@ -4,9 +4,10 @@ import cats.data.{Kleisli, OptionT}
 import cats.syntax.all.*
 import cats.{Applicative, Functor, Monad}
 
-import org.http4s.*
 import soidc.core.ValidateFailure
 import soidc.http4s.routes.JwtContext.*
+
+import org.http4s.*
 
 package object routes {
   type JwtAuth[F[_], T] = Kleisli[F, Request[F], Either[ValidateFailure, T]]

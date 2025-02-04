@@ -1,10 +1,11 @@
 package soidc.jwt
 
-import scodec.bits.ByteVector
 import soidc.jwt.codec.ByteDecoder
 import soidc.jwt.codec.ByteEncoder
 import soidc.jwt.codec.FromJson
 import soidc.jwt.codec.ToJson
+
+import scodec.bits.ByteVector
 
 /** A JSON Web Signature.
   *

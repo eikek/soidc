@@ -1,12 +1,13 @@
 package soidc.http4s.routes
 
+import soidc.jwt.JWS
+import soidc.jwt.JWSDecoded
+import soidc.jwt.StandardClaimsRead
+
 import org.http4s.HttpDate
 import org.http4s.ResponseCookie
 import org.http4s.SameSite
 import org.http4s.Uri
-import soidc.jwt.JWS
-import soidc.jwt.JWSDecoded
-import soidc.jwt.StandardClaimsRead
 
 object JwtCookie:
 

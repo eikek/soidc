@@ -5,8 +5,9 @@ import java.nio.charset.StandardCharsets
 import cats.effect.*
 import cats.syntax.all.*
 
-import scodec.bits.ByteVector
 import soidc.jwt.*
+
+import scodec.bits.ByteVector
 
 opaque type State = String
 

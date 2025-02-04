@@ -4,9 +4,10 @@ import java.time.Instant
 
 import scala.concurrent.duration.Duration
 
+import soidc.jwt.Validate.*
+
 import munit.FunSuite
 import scodec.bits.*
-import soidc.jwt.Validate.*
 
 class ValidateTest extends FunSuite:
 

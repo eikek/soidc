@@ -2,8 +2,9 @@ package soidc.core
 
 import scala.util.Try
 
-import munit.FunSuite
 import soidc.jwt.*
+
+import munit.FunSuite
 
 class JwtValidatorTest extends FunSuite:
 
