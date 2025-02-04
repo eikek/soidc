@@ -161,7 +161,7 @@ class JWSTest extends FunSuite with Syntax:
     val pk = JWK.rsaKey(KeyData.rsaPub, Algorithm.Sign.RS256).value
     assert(jws.verifySignature(pk).value)
 
-  test("imported ec key".only):
+  test("imported ec key"):
     val jwk =
       JWK.ecKeyPair(KeyData.ecPrivate, KeyData.ecPublic, Algorithm.Sign.ES256).value
     val jws = JWS(

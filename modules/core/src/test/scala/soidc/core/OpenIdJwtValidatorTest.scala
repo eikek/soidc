@@ -83,7 +83,7 @@ class OpenIdJwtValidatorTest extends CatsEffectSuite:
       .flatMap(_.validate(jws))
       .assert(_.exists(_.isValid))
 
-  test("validate encrypted jws".only):
+  test("validate encrypted jws"):
     val issuer = "http://issuer".uri
     val (jws, jwk) = createJWS(SimpleClaims.empty.withIssuer(StringOrUri(issuer.value)))
     val jwksUri = "http://jwkb".uri
