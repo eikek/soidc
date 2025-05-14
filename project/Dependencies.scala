@@ -6,7 +6,7 @@ object Dependencies {
     val scala3 = "3.3.5"
     val borer = "1.16.0"
     val catsCore = "2.13.0"
-    val catsEffect = "3.6.0"
+    val catsEffect = "3.6.1"
     val http4s = "0.23.30"
     val munit = "1.1.0"
     val munitCatsEffect = "2.1.0"
