@@ -7,7 +7,7 @@ object Dependencies {
     val borer = "1.16.1"
     val catsCore = "2.13.0"
     val catsEffect = "3.6.3"
-    val http4s = "0.23.30"
+    val http4s = "0.23.32"
     val munit = "1.2.1"
     val munitCatsEffect = "2.1.0"
     val munitScalaCheck = "1.2.0"
